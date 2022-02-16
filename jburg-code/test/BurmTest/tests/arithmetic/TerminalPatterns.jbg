@@ -1,0 +1,25 @@
+@Implements burmTest.ArithmeticOpcodes;
+
+@INodeType  burmTest.TestINode;
+@ReturnType Integer;
+
+@Header
+{
+    import java.util.Vector;
+    @SuppressWarnings("unchecked")
+}
+
+expression=ADD(INT(void) l , expression r): 1
+{
+    return Integer.parseInt(l.getUserObject().toString()) + r.intValue();
+}
+
+expression=ADD(expression l, expression r): 2
+{
+    throw new IllegalStateException("incorrect choice");
+}
+
+expression = INT(void): 1
+{
+    return Integer.parseInt(#expression.getUserObject().toString());
+}

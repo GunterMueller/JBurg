@@ -1,0 +1,21 @@
+@inodeType  burmTest.TestINode;
+@returnType Integer;
+@opcodeType EnumOpcodes;
+
+@header
+{
+    import java.util.Vector;
+    import burmTest.EnumOpcodes;
+    import static burmTest.EnumOpcodes.*;
+    @SuppressWarnings("unchecked")
+}
+
+expression = ADD(expression l, expression r): 1
+{
+    return l.intValue() + r.intValue();
+}
+
+expression = INT(void): 1
+{
+    return Integer.parseInt(#expression.getUserObject().toString());
+}

@@ -1,0 +1,17 @@
+<!-- 
+    Note this test expects a different result than its nodes imply;
+    this is because it's testing the "anything" wildcard, and the
+    reduction counts the number of children.
+-->
+<BurmTest burm="WildcardAccessor" expectedResult="3">
+
+    <Opcodes class="burmTest.ArithmeticOpcodes"/>
+    <grammar file="tests/arithmetic/WildcardAccessor.jbg"/>
+
+    <Node opcode="ADD">
+        <Node opcode="INT" userObject="99"/>
+        <Node opcode="INT" userObject="92384"/>
+        <Node opcode="INT" userObject="984"/>
+    </Node>
+
+</BurmTest>

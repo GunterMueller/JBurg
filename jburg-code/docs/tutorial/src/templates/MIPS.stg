@@ -1,0 +1,208 @@
+/*
+ * MIPS/SPIM assembly language templates used by JBurg tutorial compilers.
+ */
+group MIPS;
+
+add(register,lhs, rhs) ::= <<
+<lhs>
+<rhs>
+add <register>,<lhs.register>,<rhs.register>
+>>
+
+addi(register,lhs,rhs) ::= <<
+<lhs>
+addi <register>,<lhs.register>,<rhs>
+>>
+
+block(contents) ::= <<
+<contents;separator="\n">
+>>
+
+call(register,name,arguments,callerSave,callerRestore) ::= <<
+
+<arguments;separator="\n">
+<callerSave>
+jal <name>
+<callerRestore;separator="\n">
+move <register>,$v0
+>>
+
+compilationUnit(textSegmentItems,dataSegmentItems) ::= <<
+    .text
+    .globl  main
+    <textSegmentItems;separator="\n">
+
+<if(dataSegmentItems)>
+
+    .data
+    <dataSegmentItems;separator="\n">
+<endif>
+>>
+
+simplifiedCompilationUnit(textSegmentItems) ::= <<
+main:
+<textSegmentItems;separator="\n">
+jr $ra
+>>
+
+declareInteger(name,initializer) ::= <<
+<name>: .word <if(initializer)><initializer><else>0<endif>
+>>
+
+defineLabel(labelText) ::= <<
+<label(labelText)>:
+>>
+
+declareStringConstant(name,initializer) ::= <<
+<name>: .asciiz <initializer>
+>>
+
+functionDecl(id,frame,formals,locals,body) ::= <<
+
+
+<id>:
+    <procedurePrologue(frame)>
+    <formals>
+    <locals>
+    <body>
+>>
+
+ifThen(condition,consequent,branchOutLabelID) ::= <<
+<condition>
+beqz <condition.register>,<label(branchOutLabelID)>
+<consequent>
+<defineLabel(branchOutLabelID)>
+>>
+
+ifThenElse(condition,consequent,elseClause,branchOutLabelID,elseLabelID) ::= <<
+<condition>
+beqz <condition.register>,<label(elseLabelID)>
+<consequent>
+j <label(branchOutLabelID)>
+<defineLabel(elseLabelID)>
+<elseClause>
+<defineLabel(branchOutLabelID)>
+>>
+
+ifThenEQ(lhs,rhs,consequent,branchOutLabelID) ::= <<
+<lhs>
+<rhs>
+bne <lhs.register>,<rhs.register>,<label(branchOutLabelID)>
+<consequent>
+<defineLabel(branchOutLabelID)>
+>>
+
+ifThenElseEQ(lhs,rhs,consequent,elseClause,elseLabelID,branchOutLabelID) ::= <<
+<lhs>
+<rhs>
+bne <lhs.register>,<rhs.register>,<label(elseLabelID)>
+<consequent>
+j <label(branchOutLabelID)>
+<defineLabel(elseLabelID)>
+<elseClause>
+<defineLabel(branchOutLabelID)>
+>>
+
+la(register,lvalue) ::= <<
+la <register>,<lvalue>
+>>
+
+label(labelID) ::= <<
+__label_<labelID>
+>>
+
+li(register,expr) ::= <<
+li <register>,<expr>
+>>
+
+lt(register, lhs, rhs) ::= <<
+<lhs>
+<rhs>
+slt <register>,<lhs.register>,<rhs.register>
+>>
+
+loadLocal(register,offset) ::= <<
+lw <register>,<offset>($sp)
+>>
+
+moveRegister(lhs,rhs) ::= <<
+move <lhs>,<rhs>
+>>
+
+mult(register,lhs, rhs) ::= <<
+<lhs>
+<rhs>
+mul <register>,<lhs.register>,<rhs.register>
+>>
+
+
+printInteger(expr) ::= <<
+<expr>
+li $v0,1
+move $a0, <expr.register>
+syscall
+
+>>
+
+printString(expr) ::= <<
+<expr>
+li $v0,4
+move $a0, <expr.register>
+syscall
+>>
+
+popStack(size) ::= <<
+addiu $sp,$sp,<size>
+>>
+
+procedureEpilogue(frame) ::= <<
+<if(frame.needsRaSaved)>
+
+lw $ra,<frame.raOffset>($sp) # restore the return address<endif>
+
+<popStack(frame.frameSize)>
+jr $ra # return
+>>
+
+procedurePrologue(frame) ::= <<
+<pushStack(frame.frameSize)> 
+<if(frame.needsRaSaved)>
+sw $ra,<frame.raOffset>($sp) # save the return address<endif>
+>>
+
+pushStack(size) ::= <<
+addi $sp,$sp,-<size>
+>>
+
+/* TODO: Move epilogue out of line. */
+returnValue(expr,frame) ::= <<
+<expr>
+move $v0,<expr.register>
+<procedureEpilogue(frame)>    
+>>
+
+readInteger(dest) ::= <<
+li $v0,5
+syscall
+sw $v0,<dest>($sp)
+>>
+
+sub(register,lhs,rhs) ::= <<
+<lhs>
+<rhs>
+sub <register>,<lhs.register>,<rhs.register>
+>>
+
+storeLocal(offset,rvalue) ::= <<
+<rvalue>
+sw <rvalue.register>,<offset>($sp)
+>>
+
+while(condition,body,loopHeadLabelID,branchOutLabelID) ::= <<
+<defineLabel(loopHeadLabelID)>
+<condition>
+beqz <condition.register>,<label(branchOutLabelID)>
+<body>
+j <label(loopHeadLabelID)>
+<defineLabel(branchOutLabelID)>
+>>

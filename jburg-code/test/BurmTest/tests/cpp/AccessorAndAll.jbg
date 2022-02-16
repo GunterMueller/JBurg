@@ -1,0 +1,74 @@
+@Header {
+#include <vector>
+#include <string>
+
+enum OType { Constant, Add };
+
+class INode
+{
+public:
+    INode(OType type): type(type), annotation(NULL) {}
+
+    OType       getNodeType()                       { return type; }
+    void        setAnnotation(intptr_t annotation)  { this->annotation = annotation; }
+    intptr_t    getAnnotation()                     { return this->annotation; }
+
+    int         getChildCount()                     { return (int) children.size(); }
+    INode*      getChild(int idx)                   { return &children[idx]; }
+
+    int         getIntValue()                       { return intValue; }
+    void        setIntValue(int value)              { intValue = value; }
+    std::string toString()                          { return "?"; }
+private:
+    OType               type;
+    intptr_t            annotation;
+    std::vector<INode>  children;
+    int                 intValue;
+
+};
+
+class Value
+{
+public:
+    int intValue;
+};
+
+typedef Value* ValuePtr;
+
+Value* reduceConstant(INode* node)
+{
+    Value* result = new Value();
+    result->intValue = node->getIntValue();
+    return result;
+}
+
+}
+
+@Language cpp;
+@INodeType INode*;
+@OpcodeType OType;
+
+@ReturnType constant = ValuePtr;
+
+@GetINodeOperator(x) {
+    return x->getNodeType();
+}
+
+@GetINodeCount(x) {
+    return x->getChildCount();
+}
+
+@GetINodeChild(x,index) {
+    return x->getChild(index);
+}
+@GetAnnotation(p)
+{
+    return (JBurgAnnotation<INode*>*)p->getAnnotation();
+}
+@SetAnnotation(p, intptr_t anno)
+{
+    p->setAnnotation((intptr_t)anno);
+}
+
+constant = Constant(void): 1
+@Reduction reduceConstant(__p);

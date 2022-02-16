@@ -1,0 +1,41 @@
+@Implements burmTest.ArithmeticOpcodes;
+
+@INodeType  burmTest.TestINode;
+@ReturnType Integer;
+
+expression=ADD(expression l, expression r): 1
+{
+    return l.intValue() + r.intValue();
+}
+
+expression = INT(void): 1
+{
+    return Integer.parseInt(#expression.getUserObject().toString());
+}
+
+//  The simplest n-ary pattern.
+expression = PAREN(expression x+): 0
+{
+    int result = 0;
+    Vector<Integer> subexprs = Vector<Integer>x;
+
+    for ( Integer i: subexprs )
+        result += i;
+
+    return result;
+}
+
+//  An n-ary pattern embedded in an outer pattern.
+expression = ADD(PAREN(expression x+)): 1
+{
+}
+
+//  A pattern with an n-ary tail.
+expression = ADD(PAREN(expression x, expression y), expression z+): 1
+{
+}
+
+//  A pattern with an n-ary matcher embedded in a fixed-arity container.
+expression = ADD(expression x, PAREN(expression a+), expression y):0
+{
+}

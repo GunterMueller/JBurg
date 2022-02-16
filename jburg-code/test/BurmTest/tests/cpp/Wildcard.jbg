@@ -1,0 +1,11 @@
+@Language cpp;
+@Implements ArithmeticTokenHolder;
+
+@INodeType  TestINode*;
+@ReturnType long;
+@WildcardState anything;
+
+expression=ADD(anything l, anything r): 1
+{
+    return 47;
+}

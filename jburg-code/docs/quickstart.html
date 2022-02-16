@@ -1,0 +1,32 @@
+<h2>Quick Start</h2>
+<ol>
+	<li>Download the 
+	<a href="http://sourceforge.net/project/showfiles.php?group_id=55611">Source Distribution</a>
+	of JBurg, or check out the source:
+	<dir><code>
+hg clone http://hg.code.sf.net/p/jburg/code jburg-code
+	</code></dir>
+	<li>Third party tools required:
+		<ul>
+			<li>ANTLR 3.x
+            <br>Add antlr.jar's path to <code>build.properties</code>, e.g.,
+               <br><code>antlr.jar=${user.home}/tools/antlr-3.4-complete.jar</code>
+		</ul>
+	<li><code>ant</code> in the jburg directory builds JBurg and runs first-level acceptance tests.
+    <br>These tests are located in the <code>tests/BurmTest</code> directory; they test most features using a simple
+    self-verifying test harness.
+</ol>
+
+<!-- Piwik -->
+<script type="text/javascript">
+var pkBaseURL = (("https:" == document.location.protocol) ? "https://sourceforge.net/apps/piwik/jburg/" : "http://sourceforge.net/apps/piwik/jburg/");
+document.write(unescape("%3Cscript src='" + pkBaseURL + "piwik.js' type='text/javascript'%3E%3C/script%3E"));
+</script><script type="text/javascript">
+try {
+var piwikTracker = Piwik.getTracker(pkBaseURL + "piwik.php", 1);
+piwikTracker.trackPageView();
+piwikTracker.enableLinkTracking();
+} catch( err ) {}
+</script><noscript><p><img src="http://sourceforge.net/apps/piwik/jburg/piwik.php?idsite=1" style="border:0" alt=""/></p></noscript>
+<!-- End Piwik Tag -->
+

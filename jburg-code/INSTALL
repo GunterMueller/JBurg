@@ -1,0 +1,20 @@
+To install and build JBurg:
+
+1.  Copy lib/jburg.jar to lib/jburg-known-good.jar
+2.  Install the following external tools:
+
+ANT - Build file utility.
+   http://jakarta.apache.org/ant
+   
+ANTLR - Grammar generating tool.
+	Used by JBurg to generate its grammar,
+    and by the StringTemplate-based code emitter.
+	http://www.antlr.org
+   
+g++ - GNU C++ compiler
+    Used by the JBurg self-test tasks to validate C++ code generation.
+
+3.  ant cleanBuildAndTest will build a clean jburg.jar and run its first level acceptance test.
+
+4.  JBurg's second-level acceptance test is Apache Falcon.
+

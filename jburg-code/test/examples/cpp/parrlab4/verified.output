@@ -1,0 +1,26 @@
+Input:
+int i;
+int x;
+i=1;
+x=0;
+x=x+i;
+
+; ( int i )
+	.comm	i, 4
+; ( int x )
+	.comm	x, 4
+; ( = ( & i ) 1 )
+	la	r1, 1
+	la	r2, i
+	sw	r1, (r2)
+; ( = ( & x ) 0 )
+	la	r3, x
+	sw	r0, (r3)
+; ( = ( & x ) ( + ( * ( & x ) ) ( * ( & i ) ) ) )
+	la	r4, i
+	lw	r5, (r4)
+	la	r6, x
+	lw	r7, (r6)
+	add	r8, r7, r5
+	la	r9, x
+	sw	r8, (r9)

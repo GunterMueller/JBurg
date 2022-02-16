@@ -1,0 +1,13 @@
+<BurmTest burm="JBurgCppTestEmitterNary" expectedResult="3">
+
+    <grammar file="tests/cpp/IntegerArithmeticNary.jbg"/>
+    <language value="cpp"/>
+    <cppsource path="tests/cpp/IntegerArithmeticNaryMain.cpp"/>
+    <executable path="gensrc/CppTestNary"/>
+
+    <Node opcode="ADD">
+        <Node opcode="INT" userObject="1"/>
+        <Node opcode="INT" userObject="2"/>
+    </Node>
+
+</BurmTest>

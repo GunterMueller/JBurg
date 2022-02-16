@@ -1,0 +1,23 @@
+build.xml 
+    - Single build maintenance file.
+   
+src/grammars
+    - Contains ANTLR and JBurg grammar files used by JBurg.
+   
+src/java/jburg/burg
+   - Semantic analysis and code generator driver files.
+
+src/java/jburg/emitter
+    - Code generator back end files.
+
+src/templates
+    - Target-specific string templates. 
+   
+test/BurmTest
+   - Self-verifying test cases.
+
+test/patternmatcher
+    - Pattern matcher tests.
+   
+doc
+   - Documentation.

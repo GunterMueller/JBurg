@@ -1,0 +1,11 @@
+<BurmTest burm="InlineNodeAdapter" expectedResult="3">
+
+    <Opcodes class="burmTest.ArithmeticOpcodes"/>
+    <grammar file="tests/arithmetic/InlineINodeAdapter.jbg"/>
+
+    <Node opcode="ADD">
+        <Node opcode="INT" userObject="1"/>
+        <Node opcode="INT" userObject="2"/>
+    </Node>
+
+</BurmTest>

@@ -1,0 +1,193 @@
+<project name="JBurgTutorial" default="help" basedir=".">
+
+    <target name="help">
+        <echo>ant build works well.</echo>
+    </target>
+
+    <target name="build" depends="clean,tutorialJar"/>
+
+    <target name="init">
+        <property file="${user.home}/ant.properties" />
+        <property file="../../build.properties" />
+
+        <property name="jburg.jar" value="../../lib/jburg.jar"/>
+        <property name="jburg.main.class" value="jburg.burg.JBurgMain" />
+        <property name="debug.symbols" value="true"/>
+
+        <mkdir dir="gensrc"/>
+        <mkdir dir="classes"/>
+        <mkdir dir="lib"/>
+        <!--
+            Defines a <jburg input="..." output="..."> macro
+            for using JBurg to generate a Java-based BURM from a .jbg file.
+        -->
+        <macrodef name="jburg">
+            <attribute name="input"/>
+            <attribute name="output"/>
+            <sequential>
+                <dirname property="jburg.dirname.@{input}" file="@{input}"/>
+                <dirname property="jburg.dirname.@{output}" file="@{output}"/>
+                <basename property="jburg.basename.@{output}" file="@{output}"/>
+                <mkdir dir="${jburg.dirname.@{output}}"/>
+                <java jar="${jburg.jar}"
+                      fork="true" failonerror="true" >
+                    <arg value="@{input}"/>
+                    <arg value="-outputdir"/>
+                    <arg value="${jburg.dirname.@{output}}"/>
+                    <arg value="-outputfile"/>
+                    <arg value="${jburg.basename.@{output}}"/>
+                    <arg value="-debug"/>
+                    <classpath>
+                        <pathelement path="${antlr.jar}"/>
+                        <pathelement path="${jburg.jar}"/>
+                    </classpath>
+                </java>
+            </sequential>
+        </macrodef>
+
+        <!--
+            Transform ANTLR's .tokens file into a java class
+            with manifest constants.
+        -->
+        <macrodef name="generateTokenClass">
+            <attribute name="input"/>
+            <attribute name="packageName"/>
+            <attribute name="className"/>
+            <sequential>
+                <exec
+                    executable="awk"
+                    input="@{input}"
+                    output="gensrc/@{className}.java"
+                    >
+                    <arg value="-v"/>
+                    <arg value="packageName=@{packageName}"/>
+                    <arg value="-v"/>
+                    <arg value="className=@{className}"/>
+                    <arg value="-f"/>
+                    <arg path="src/util/tokenEnum.awk"/>
+                </exec>
+            </sequential>
+        </macrodef>
+
+        <!-- Invoke ANTLR3 on a grammar. -->
+        <macrodef name="antlr3">
+            <attribute name="grammar"/>
+            <sequential>
+                <java jar="${antlr.jar}" fork="true" failonerror="true">
+                    <arg value="-verbose"/>
+                    <arg value="-o"/>
+                    <arg path="gensrc"/>
+                    <arg path="@{grammar}"/>
+                </java>
+            </sequential>
+        </macrodef>
+
+        <!-- Only regenerate the parsers when their grammar(s) change. -->
+		<uptodate property="first.parser.uptodate" srcfile="src/grammar/antlr/first.g" targetfile="gensrc/firstParser.java"/>
+		<uptodate property="second.parser.uptodate" srcfile="src/grammar/antlr/second.g" targetfile="gensrc/secondParser.java"/>
+		<uptodate property="third.parser.uptodate" srcfile="src/grammar/antlr/third.g" targetfile="gensrc/thirdParser.java"/>
+
+		<uptodate property="first.treeparser.uptodate" srcfile="src/grammar/jburg/first.jbg" targetfile="gensrc/FirstTreeParser.java"/>
+		<uptodate property="second.treeparser.uptodate" srcfile="src/grammar/jburg/second.jbg" targetfile="gensrc/SecondTreeParser.java"/>
+		<uptodate property="third.treeparser.uptodate" srcfile="src/grammar/jburg/third.jbg" targetfile="gensrc/ThirdTreeParser.java"/>
+        
+    </target>
+
+	<target name="clean">
+		<delete dir="classes" />            
+		<delete dir="gensrc" />            
+		<delete dir="lib" />            
+	</target>
+
+
+    <target name="frontend" depends="init,first.parser,second.parser,third.parser"/>
+
+    <target name="first.parser" unless="first.parser.uptodate">
+        <antlr3 grammar="src/grammar/antlr/first.g"/>
+        <generateTokenClass
+            input="gensrc/first.tokens"
+            packageName="jburg.tutorial.first"
+            className="TokenTypes"
+        />
+    </target>
+
+    <target name="second.parser" unless="second.parser.uptodate">
+        <antlr3 grammar="src/grammar/antlr/second.g"/>
+        <generateTokenClass
+            input="gensrc/second.tokens"
+            packageName="jburg.tutorial.second"
+            className="SecondTokenTypes"
+            />
+    </target>
+
+    <target name="third.parser" unless="third.parser.uptodate">
+        <antlr3 grammar="src/grammar/antlr/third.g"/>
+        <generateTokenClass
+            input="gensrc/third.tokens"
+            packageName="jburg.tutorial.third"
+            className="ThirdTokenTypes"
+            />
+    </target>
+
+    <target name="burg" depends="init,first.treeparser,second.treeparser,third.treeparser"/>
+    <target name="first.treeparser" depends="init" unless="first.treeparser.uptodate">
+        <jburg input="src/grammar/jburg/first.jbg" output="gensrc/FirstTreeParser.java"/>
+    </target>
+    <target name="second.treeparser" depends="init" unless="second.treeparser.uptodate">
+        <jburg input="src/grammar/jburg/second.jbg" output="gensrc/SecondTreeParser.java"/>
+    </target>
+    <target name="third.treeparser" depends="init" unless="third.treeparser.uptodate">
+        <jburg input="src/grammar/jburg/third.jbg" output="gensrc/ThirdTreeParser.java"/>
+    </target>
+
+    <target name="compile" depends="frontend,burg">
+		<javac 
+			debug="${debug.symbols}" 
+			destdir="classes" includes="**/*.java"
+			>
+			<src path="src/java"/>
+			<src path="gensrc"/>
+			<classpath>
+				<pathelement location="${antlr.jar}"/>
+			</classpath>
+		</javac>
+    </target>
+
+    <target name="tutorialJar" depends="compile">
+        <jar jarfile="lib/FirstTutorial.jar">
+            <fileset dir="classes"/>
+            <fileset dir="src" includes="**/*.stg"/>
+            <fileset dir="src/properties/first" includes="configuration.properties"/>
+            <manifest>
+                <attribute name="Main-Class" value="jburg.tutorial.common.Main"/>
+                <attribute name="Class-Path" value="${antlr.jar}"/>
+            </manifest>
+        </jar>
+
+        <jar jarfile="lib/SecondTutorial.jar">
+            <fileset dir="classes"/>
+            <fileset dir="src" includes="**/*.stg"/>
+            <fileset dir="src/properties/second" includes="configuration.properties"/>
+            <manifest>
+                <attribute name="Main-Class" value="jburg.tutorial.common.Main"/>
+                <attribute name="Class-Path" value="${antlr.jar}"/>
+            </manifest>
+        </jar>
+
+        <jar jarfile="lib/ThirdTutorial.jar">
+            <fileset dir="classes"/>
+            <fileset dir="src" includes="**/*.stg"/>
+            <fileset dir="src/properties/third" includes="configuration.properties"/>
+            <manifest>
+                <attribute name="Main-Class" value="jburg.tutorial.common.Main"/>
+                <attribute name="Class-Path" value="${antlr.jar}"/>
+            </manifest>
+        </jar>
+    
+    </target>
+
+    <target name="jar">
+        <ant dir="../.." target="jar"/>
+    </target>
+
+</project>

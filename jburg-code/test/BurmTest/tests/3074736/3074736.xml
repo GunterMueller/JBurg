@@ -1,0 +1,10 @@
+<BurmTest burm="EnumOpcodesEmitter" expectedResult="3">
+
+    <Opcodes class="burmTest.EnumOpcodes"/>
+    <mainClass srcdir="tests/3074736" includes="TestEnums.java" class="TestEnums"/>
+    <grammar file="tests/3074736/3074736.jbg"/>
+
+    <!-- No nodes; the BurmTest driver doesn't know how to build
+         nodes with enum types yet.
+    -->
+</BurmTest>

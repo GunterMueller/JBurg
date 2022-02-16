@@ -1,0 +1,64 @@
+@Implements burmTest.ArithmeticOpcodes;
+
+@INodeType  burmTest.TestINode;
+@ReturnType Integer;
+
+{
+    int forceCostCall(burmTest.TestINode node)
+    {
+        return 1;
+    }
+    
+    int ExprFromTyped = 1;
+    int TypedFromInt = 1;
+    int TypedFromUint = 1;
+    int ExprFromIntFamily = 1;
+}
+
+expression=ADD(expression lhs, expression r): 1
+{
+    return lhs.intValue() + r.intValue();
+}
+
+expression = typed_expression: ExprFromTyped
+{
+    return typed_expression;
+}
+
+typed_expression = int_expression: TypedFromInt
+{
+    return int_expression;
+}
+
+typed_expresson = uint_expression: TypedFromUint
+{
+    return uint_expression;
+}
+
+expression = int_family_expression: ExprFromIntFamily
+{
+    return int_family_expression;
+}
+
+int_family_expression = int_expression;
+int_family_expresson = uint_expression;
+
+int_expression = int_expression_prime;
+
+int_expression_prime = INT(void): forceCostCall()
+{
+    return Integer.parseInt(#int_expression_prime.getUserObject().toString());
+}
+
+uint_expression = UINT(void): forceCostCall()
+{
+    // Hokey, but OK for testing.
+    return Integer.parseInt(#uint_expression.getUserObject().toString());
+}
+
+int_expression_prime = speeft;
+
+speeft = PAREN(void): 1
+{
+    throw new IllegalStateException("this reduction is here to force a pattern match up into the closures");
+}

@@ -1,0 +1,58 @@
+<project name="PPMTest" default="MAT" basedir=".">
+
+    <target name="init">
+        <property file="../../build.properties"/>
+
+        <property name="jburg.jar" value="../../lib/jburg.jar"/>
+        <property name="default.main.class" value="PPMTest"/>
+        <property name="ppm.test.file" value="test/PPMStringTest.xml"/>
+
+        <!-- Prep the build environment -->
+        <mkdir dir="classes"/>
+        <mkdir dir="gensrc"/>
+
+    </target>
+
+    <target name="clean">
+        <delete dir="classes"/>
+        <delete dir="gensrc"/>
+    </target>
+
+    <!--  Run an individual test. -->
+    <target name="test" depends="init,test_banner,compile,run_test"/>
+
+    <!--  Print a test banner unless the test is running quietly. -->
+    <target name="test_banner">
+        <echo level="info" message="Running test: ${ppm.test.file}"/>
+    </target>
+
+    <!--  Java compile/build sequence. -->
+    <target name="compile" depends="init">
+        <javac srcdir="src" destdir="classes" includes="**/*.java" debug="true">
+            <classpath>
+                <pathelement path="${jburg.jar}"/>
+            </classpath>
+        </javac>
+    </target>
+
+    <!--  Java run sequence. -->
+    <target name="run_test">
+        <!--  test.main.class might have been set explicitly. -->
+        <property name="test.main.class" value="${default.main.class}"/>
+
+        <java classname="${test.main.class}" fork="yes" failonerror="yes">
+            <arg value="${ppm.test.file}"/>
+            <jvmarg value="-ea"/>
+            <jvmarg value="-Xmx2048M"/>
+			<classpath>
+				<pathelement path="classes"/>
+                <pathelement path="${jburg.jar}"/>
+			</classpath>
+        </java>
+
+    </target>
+
+    <!-- Build and run the test suite. -->
+    <target name="MAT" depends="clean,init,test"/>
+
+</project>

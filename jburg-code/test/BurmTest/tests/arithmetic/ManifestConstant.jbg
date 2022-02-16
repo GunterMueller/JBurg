@@ -1,0 +1,22 @@
+@Implements burmTest.ArithmeticOpcodes;
+
+@INodeType  burmTest.TestINode;
+@ReturnType Integer;
+
+@Constant FOO = 1;
+
+@Header
+{
+    import java.util.Vector;
+    @SuppressWarnings("unchecked")
+}
+
+expression=ADD(expression lhs, expression r): FOO
+{
+    return lhs.intValue() + r.intValue();
+}
+
+expression = INT(void): 1
+{
+    return Integer.parseInt(#expression.getUserObject().toString());
+}

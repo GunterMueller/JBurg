@@ -1,0 +1,402 @@
+/*
+ */
+group JavascriptBoilerplate;
+
+trailer(iNodeClass, prologueCases, debugMode, defaultErrorHandler, problemTree, ntType, ntIterator, wildcardGoal) ::= <<
+
+    var MAX_COST_VALUE = 2147483647;
+
+    /**
+     * Reduce a labeled subtree.
+     * @param p the annotation describing the root of the subtree.
+     * @param goalState the required goal state.
+     */
+    function reduce (p, goalState)
+	{
+		reduceAntecedent(p,goalState);
+		// Release the annotation's data.
+		p.release();
+	}
+
+    function reduceAntecedent (p, goalState)
+	{
+        var iRule  = -1;
+
+		if ( ( goalState != <wildcardGoal> )  )
+		{
+            iRule = p.getRule(goalState);
+		}
+		else
+		{
+			// Find the minimum-cost path.
+            var minCost  = MAX_COST_VALUE;
+
+            <ntIterator>
+			{
+				if ( ( minCost \> p.getCost(i) )  )
+				{
+                    iRule = p.getRule(i);
+                    minCost = p.getCost(i);
+                    goalState = i;
+				}
+			}
+		}
+		if ( ( iRule \> 0 )  )
+		{
+            <if(prologueCases)>
+            dispatchPrologue(p.getNode(), iRule);
+            <endif>
+			reduceSubgoals(p, iRule);
+			dispatchAction(p, iRule );
+		}
+		else
+		{
+            <if(defaultErrorHandler)>
+            <defaultErrorHandler>
+            <else>
+            // FIXME: Need a String.format analog
+			throw new Error ( String.format("Unable to find a rule to process \"%s\", operator=%s, goal=%s", p, p.getOperator(), goalState) );
+            <endif>
+		}
+	}
+
+<if(prologueCases)>
+
+    function dispatchPrologue(p, iRule)
+    {
+        switch(iRule)
+        {
+            <prologueCases; separator="\n">
+        }
+    }
+<endif>
+
+    function reduceSubgoals(p, rule_num)
+	{
+		if ( ___subgoals_by_rule[rule_num] != null )
+		{
+			for ( var x in ___subgoals_by_rule[rule_num] )
+			{
+                var sg = ___subgoals_by_rule[rule_num][x];
+				if ( !sg.isNary() )
+				{
+					reduce ( sg.getNode(p), sg.getGoalState());
+				}
+				else
+				{
+					// Aggregate the operands of an n-ary operator into a single container.
+					var sub_parent = sg.getNode(p);
+					var variadic_result = [];
+					for ( var j = sg.startIndex; j \< sub_parent.getArity(); j++ )
+					{
+						reduce(sub_parent.getNthChild(j), sg.getGoalState());
+						variadic_result.push(__reducedValues.pop());
+					}
+					__reducedValues.push(variadic_result);
+				}
+			}
+		}
+	}
+
+    /**
+     * Get the cost of an n-ary tail of candidate reductions.
+     * @param Node the parent of the candidates.
+     * @param goalState the desired goal state.
+     * @param startIndex the starting position of
+     * the n-ary tail in the parent's children.
+     * @return the sum of the n-ary children's costs
+     * for the desired goal state, capped at 
+     * MAX_COST_VALUE - 1 if all child costs
+     * were strictly less than MAX_COST_VALUE.
+     */
+    function getNaryCost(node, goalState, startIndex)
+	{
+		var accumCost = 0;
+		for ( var i = startIndex; accumCost \< MAX_COST_VALUE && i \< node.getArity(); i++ )
+        {
+            // Don't allow the cost of a series of feasible child reductions
+            // to rise above MAX_VALUE; the concept of "feasability" and the
+            // concept of "cost" need to be disconnected.
+            var  childCost = node.getNthChild(i).getCost(goalState);
+
+            if ( childCost >= MAX_COST_VALUE )
+                return MAX_COST_VALUE;
+            else
+                accumCost += childCost;
+        }
+
+		return accumCost \< MAX_COST_VALUE? accumCost: MAX_COST_VALUE - 1;
+	}
+	
+    /**
+     * Reduce a subtree to a specific goal state.
+     * @param root the root of the subtree.
+     * @param goal_state the desired goal.
+     */
+    function burm(root, goal_state)
+	{
+        if ( ! goal_state) 
+            goal_state = <wildcardGoal>;
+
+		var annotatedTree = label(root);
+
+        <if(debugMode)>
+        try
+        {
+            reduce(annotatedTree, goal_state);
+        }
+        catch ( cant_reduce )
+        {
+            this.<problemTree> = annotatedTree;
+            throw cant_reduce;
+        }
+        <else>
+		reduce(annotatedTree, goal_state);
+        <endif>
+	}
+	
+    /**
+     * Get the (presumably only) final
+     * result of a series of reductions.
+     */
+    function getResult()
+	{
+		return __reducedValues.pop();
+	}
+
+    /**
+     * @return the sum of the input costs, normalized as follows:
+     * \<li>If either parameter equals MAX_COST_VALUE, return MAX_COST_VALUE.
+     * \<li>If the sum is less than MAX_COST_VALUE, return the sum.
+     * \<li>Otherwise return MAX_COST_VALUE-1.
+     */
+    function normalizedAdd(c1, c2)
+    {
+        var result = MAX_COST_VALUE;
+
+        if ( c1 \< MAX_COST_VALUE && c2 \< MAX_COST_VALUE )
+        {
+            var accum = c1 + c2;
+            result = accum \< MAX_COST_VALUE?
+                accum:
+                MAX_COST_VALUE-1;
+        }
+
+        return result;
+    }
+>>
+
+annotation(iNodeClass, opcodeClass, getOperator, ntType) ::= <<
+	/** 
+     *  JBurgAnnotation is a data structure internal to the
+	 *  JBurg-generated BURM that annotates a <iNodeClass> with
+	 *  information used for dynamic programming and reduction.
+	 */
+	function JBurgAnnotation(newNode)
+    {
+        this.m_node = newNode;
+    }
+	
+    /** @return this node's operator. */
+    JBurgAnnotation.prototype.getOperator = function() 
+    {
+        return <getOperator>;
+    }
+
+    /** @return this node's wrapped <iNodeClass>. */ 
+    JBurgAnnotation.prototype.getNode = function()  
+    {
+        return m_node; 
+    }
+
+    /** @return the wrapped node's toString().  */
+    JBurgAnnotation.prototype.toString = function()
+    {
+        return m_node.toString(); 
+    }
+
+
+    /**
+     * Common superclass of node-specific annotations.
+     */
+	function JBurgSpecializedAnnotation(node) {
+        JBurgAnnotation(node);
+    }
+    JBurgSpecializedAnnotation.prototype = new JBurgAnnotation;
+
+    JBurgSpecializedAnnotation.prototype.getNthChild = function (idx) {
+        throw new Error(" has no children.");
+    }
+    JBurgSpecializedAnnotation.prototype.addChild = function(new_child) {
+        throw new Error(" cannot have children.");
+    }
+    JBurgSpecializedAnnotation.prototype.reset = function ( goalState, cost, rule ) {
+        throw new Error(" cannot be reset.");
+    }
+    JBurgSpecializedAnnotation.prototype.release =function() {
+    }
+    JBurgSpecializedAnnotation.prototype.recordAntecedent = function( iGoalState, newAntecedentState ) {
+        throw new Error(" cannot record antecedents.");
+    }
+
+    /**
+     * An annotation that denotes an unused node in the tree.
+     */
+	function PlaceholderAnnotation(node, capacity) {
+        JBurgSpecializedAnnotation(node);
+        this.children = [];
+        this.actualChildCount = 0;
+    }
+
+    PlaceholderAnnotation.prototype.getRule  = function (state) { return -1; }
+    PlaceholderAnnotation.prototype.getCost  = function (state) { return MAX_COST_VALUE; }
+
+    PlaceholderAnnotation.prototype.getArity = function() {
+        return actualChildCount;
+    }
+
+    PlaceholderAnnotation.prototype.getNthChild = function(idx) {
+        return children[idx];
+    }
+
+    PlaceholderAnnotation.prototype.addChild = function(newChild) {
+        children[actualChildCount++] = newChild;
+    }
+
+    /**
+     * An annotation that describes a pattern-match failure.
+     */
+    var errorAnnotation = {};
+    errorAnnotation.prototype = new JBurgSpecializedAnnotation(null);
+    errorAnnotation.prototype.getRule  = function(state) { return -1; }
+    errorAnnotation.prototype.getCost  = function(state) { return MAX_COST_VALUE; }
+    errorAnnotation.prototype.getArity = function() { return 0; }
+
+    /**
+     * JBurgSubgoal describes a possible reduction of a subtree.
+     */
+    function  JBurgSubgoal(goal_state, is_nary, start_index) {
+        this.goalState = goal_state;
+        this.isNary = is_nary;
+        this.startIndex = start_index;
+        this.accessPath = Array.prototype.slice.call(arguments,3);
+    }
+    JBurgSubgoal.prototype.getGoalState = function() { return this.goalState; }
+    JBurgSubgoal.prototype.isNary = function() { return this.isNary; }
+    /**
+     * Traverse the access path from the ancestor subtree
+     * to the root of this subgoal's subtree.
+     * @param ancestor the ancestor node.
+     */
+    JBurgSubgoal.prototype.getNode = function(ancestor) {
+        var result = ancestor;
+        for ( var idx in this.accessPath )
+            result = result.getNthChild(this.accessPath[idx]);
+        return result;
+    }
+>>
+
+debuggingSupport(iNodeClass, problemTree, stateNames, ntStateName, ntIterator, getOperator) ::= <<
+
+	private JBurgAnnotation <problemTree>;
+	
+    public void dump(java.io.PrintWriter debug_output)
+	{
+		if ( null == __problemTree )
+		{
+			debug_output.print("\<bailed reason=\"no problem tree\"/\>");
+			
+			return;
+		}
+		debug_output.print("\<jburg\>");
+		dumpSubgoals(debug_output);
+		debug_output.print("\<label\>");
+		describeNode(__problemTree,debug_output);
+		debug_output.print("\</label\>\</jburg\>");
+	}
+	
+    public void dump(<iNodeClass> node,java.io.PrintWriter debug_output)
+	{
+		JBurgAnnotation anno = label(node);
+		debug_output.println("\<?xml version=\"1.0\"?\>");
+		debug_output.println("\<BurmDump date=\"" + new java.util.Date() + "\"\>");
+		debug_output.println("\<jburg\>");
+		dumpSubgoals(debug_output);
+		debug_output.println("\<label\>");
+		describeNode(anno,debug_output);
+		debug_output.println("\</label\>\n\</jburg\>\n\</BurmDump\>");
+		debug_output.flush();
+	
+	}
+
+    public void describeNode(JBurgAnnotation node,java.io.PrintWriter debug_output)
+	{
+		if ( node == null )
+            return;
+
+		String self_description;
+		try
+		{
+			self_description = java.net.URLEncoder.encode(node.getNode().toString(),"UTF-8");
+		
+		}
+		catch ( Exception cant_encode )
+		{
+			self_description = node.getNode().toString();
+		
+		}
+		debug_output.print("\<node operator=\"" + <getOperator> + "\" selfDescription=\"" + self_description + "\"\>");
+		<ntIterator>
+		{
+			if ( node.getCost(i) \< MAX_COST_VALUE )
+			{
+				debug_output.print ( "\<goal");
+				debug_output.print ( " name=\"" + <ntStateName> + "\"");
+				debug_output.print ( " rule=\"" + node.getRule(i) + "\"");
+				debug_output.print ( " cost=\"" + node.getCost(i) + "\"");
+				debug_output.println ( "/\>" );
+			
+			}
+		}
+
+		for (int i = 0; i \< node.getArity(); i++ )
+            describeNode ( node.getNthChild(i),debug_output);
+		debug_output.println ( "\</node\>" );
+	
+	}
+
+    private void dumpSubgoals(java.io.PrintWriter debug_output)
+	{
+		for ( int rule_num = 0; rule_num \< ___subgoals_by_rule.length; rule_num++ )
+        {
+            if ( ___subgoals_by_rule[rule_num] != null )
+            {
+                debug_output.printf("\<subgoals rule=\"%d\"\>\n", rule_num);
+
+                for ( JBurgSubgoal sg : ___subgoals_by_rule[rule_num] )
+                {
+                    debug_output.printf("\<subgoal goal=\"%s\" nary=\"%s\" startIndex=\"%s\"", stateName[sg.getGoalState()], sg.isNary(), sg.startIndex);
+
+                    if ( sg.accessPath.length \> 0 )
+                    {
+                        debug_output.println("\>");
+                        for ( int idx: sg.accessPath )
+                        debug_output.printf("\<accessPath index=\"%d\"/\>\n", idx);
+                        debug_output.printf("\</subgoal\>\n");
+                    }
+                    else
+                    {
+                        debug_output.println("/\>");
+                    }
+                }
+                debug_output.printf("\</subgoals\>\n");
+            }
+		}
+	}
+
+    static final String[] stateName = new String[] { null, <stateNames:stringify(); separator=","> };
+>>
+
+stringify(x) ::= <<
+"<x>"
+>>

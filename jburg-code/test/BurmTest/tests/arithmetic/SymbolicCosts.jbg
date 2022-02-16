@@ -1,0 +1,35 @@
+@Implements burmTest.ArithmeticOpcodes;
+
+@INodeType  burmTest.TestINode;
+@ReturnType Integer;
+
+@Header
+{
+    //  This keeps the MAT output clean.
+    @SuppressWarnings("unchecked")
+}
+
+
+{
+    class Cost
+    {
+        public static final int ONE = 1;
+    }
+
+    static final int TWO = 2;
+}
+
+expression=ADD(expression lhs, expression r): Cost.ONE
+{
+    return lhs.intValue() + r.intValue();
+}
+
+expression = INT(void): TWO
+{
+    return Integer.parseInt(#expression.getUserObject().toString());
+}
+
+expression = INT(void): 3
+{
+    throw new IllegalStateException();
+}

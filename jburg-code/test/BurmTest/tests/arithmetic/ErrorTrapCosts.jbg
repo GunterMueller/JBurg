@@ -1,0 +1,40 @@
+@Implements burmTest.ArithmeticOpcodes;
+
+@INodeType  burmTest.TestINode;
+@ReturnType Integer;
+
+@Header
+{
+    import java.util.Vector;
+    @SuppressWarnings("unchecked")
+}
+
+{
+    static int ERROR_TRAP = Integer.MAX_VALUE - 2;
+}
+
+expression=ADD(expression lhs, expression r): ERROR_TRAP
+{
+    return lhs.intValue() + r.intValue();
+}
+
+expression=ADD(expression_prime lhs, expression_prime r): ERROR_TRAP
+{
+    return lhs.intValue() + r.intValue();
+}
+
+expression = INT(void): ERROR_TRAP
+{
+    return Integer.parseInt(#expression.getUserObject().toString());
+}
+
+expression_prime = INT(void): ERROR_TRAP
+{
+    return Integer.parseInt(#expression_prime.getUserObject().toString());
+}
+
+expression_prime = expression: ERROR_TRAP
+{
+    return expression;
+}
+

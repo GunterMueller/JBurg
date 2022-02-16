@@ -1,0 +1,12 @@
+<BurmTest burm="TestParamSubsitution" expectedResult="8">
+
+    <Opcodes class="burmTest.ArithmeticOpcodes"/>
+    <grammar file="tests/include/IncludeIntegerArithmetic.jbg"/>
+    
+
+    <Node opcode="ADD">
+        <Node opcode="INT" userObject="5"/>
+        <Node opcode="INT" userObject="3"/>
+    </Node>
+
+</BurmTest>

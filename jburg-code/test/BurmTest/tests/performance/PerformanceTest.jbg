@@ -1,0 +1,92 @@
+@Implements PerformanceOpcodes;
+
+@INodeType  burmTest.TestINode;
+@ReturnType Integer;
+@ReturnType string_constant = String;
+@ReturnType name = String;
+
+@Header
+{
+    import java.util.HashMap;
+    import java.util.Map;
+    import java.util.Vector;
+    @SuppressWarnings("unchecked")
+}
+
+{
+    static Integer ZERO = new Integer(0);
+
+    Map<Object, Integer> identifiers = new HashMap<Object,Integer>();
+
+    Integer getValue(Object lhs)
+    {
+        Integer result = identifiers.get(lhs);
+
+        return result != null ?  result: ZERO;
+    }
+}
+
+statement = ASSIGN(name lhs, expression rhs): 1
+{
+    identifiers.put(lhs, rhs);
+    return rhs;
+}
+
+statement = BLOCK(statement statements*) : 1
+{
+    return statements.elementAt(statements.size() - 1);
+}
+
+statement = PRINT(name n) : 1
+{
+    Integer result = getValue(n);
+    System.out.printf("%s = %s\n", n, result);
+    return result;
+}
+
+statement = expression : 0
+{
+    return expression;
+}
+
+expression=ADD(expression lhs, expression r): 1
+{
+    return lhs.intValue() + r.intValue();
+}
+
+expression = MULTIPLY(expression exprs*): 1
+{
+    long result = 1;
+
+    for ( Integer x: exprs)
+        result *= x;
+
+    return (int)result;
+}
+
+expression = PAREN(expression enclosed): 0
+{
+    return enclosed;
+}
+
+expression = integer_constant;
+
+expression = string_constant : 1
+{
+    return Integer.parseInt(string_constant);
+}
+
+string_constant = INT(void): 1
+{
+    return #string_constant.getUserObject().toString();
+}
+
+expression = name: 1
+{
+    return getValue(name);
+}
+
+name = IDENTIFIER(void): 1
+{
+    return #name.getUserObject().toString();
+}

@@ -1,0 +1,27 @@
+@Implements burmTest.ArithmeticOpcodes;
+
+@INodeType  burmTest.TestINode;
+@ReturnType Integer;
+
+@Header
+{
+    //  This keeps the MAT output clean.
+    @SuppressWarnings("unchecked")
+}
+
+//  Inclass definitions.
+//  This could be a @Property (and probably should be)
+//  in a production specification, but since the test
+//  harness doesn't know how to set it it's convenient
+//  to do it ad-hoc here.
+{
+    ExplicitReducer reducer = new ExplicitReducer();
+}
+
+expression=ADD(expression lhs, expression rhs): 1
+    @Reduction reducer.reduceAdd(lhs, rhs);
+
+
+expression = INT(void): 1 
+    @Prologue reducer.prologueInt()
+    @Reduction reducer.reduceInt(#expression);

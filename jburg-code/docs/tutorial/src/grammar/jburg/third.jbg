@@ -1,0 +1,391 @@
+/*
+ * A code generator for a simple language,
+ * with declarations of a homogenous int type,
+ * assignment statements, a "print" statement,
+ * and very simple arithmetic (integer constants
+ * and integer addition).
+ */
+@package jburg.tutorial.third;
+@Extends BURMBase;
+
+@Header {
+    import java.util.ArrayList;
+    import java.util.List;
+
+    import org.antlr.runtime.tree.*;
+    import org.antlr.stringtemplate.*;
+
+    import jburg.tutorial.common.*;
+    import jburg.tutorial.semantics.*;
+
+    // TokenTypes is a class generated from ANTLR's
+    // tokens file; these constants are the "opcodes"
+    // of the ANTLR-generated AST.
+    import static jburg.tutorial.third.ThirdTokenTypes.*;
+}
+
+// Set up the interface between the tree parser
+// and the AST; JBurg has builtin adapters for
+// ANTLR3 (and ANTLR2) node types.
+@INodeType CommonTree;
+@INodeAdapter jburg.burg.inode.Antlr3JavaAdapter;
+
+// See first.jbg for notes on return types.
+@ReturnType Object;
+@ReturnType intConstant = Integer;
+@ReturnType name = String;
+
+// This "inclass" block is copied into the generated
+// tree parser/code generator.  It contains the rudimentary
+// semantic analysis code necessary to generate valid assembly
+// language, and a convenience interface over the StringTemplateGroup
+// that contains the assembly language constructs.
+{
+    /**
+     * Back end: StringTemplate manager.
+     */
+    private TemplateManager templateManager = new TemplateManager("templates", "MIPS");
+
+    /**
+     * The current function definition's stack frame.
+     */
+    public Frame frame;
+
+    /**
+     * Data Segment management: a list of
+     * the templates that declare intialized data items.
+     */
+    List<Object> dataSegmentItems = new ArrayList<Object>();
+
+    /**
+     * Register allocation: next available temp register.
+     * Note that no register spill facility is available,
+     * so computations can't be very deeply nested or the
+     * compiler will exhaust its supply of temps.
+     */
+    int nextTemp = 0;
+
+    /**
+     * Register allocation:
+     * Allocate a temporary register for a computation.
+     * @param template the template that requires a temp register.
+     * The template must refer to this register as &lt;register&gt;.
+     * @return the template.
+     */
+    private StringTemplate allocateTemp(StringTemplate template)
+    {
+        if ( nextTemp < 7 )
+            template.setAttribute("register", String.format("$t%d", nextTemp++));
+        else
+            throw new IllegalStateException("out of temporary registers.");
+
+        return template;
+    }
+
+    /**
+     * Register allocation: reset the temp register.
+     * @param template a template (typically a statement)
+     * that guarantees no temps are live past its boundaries.
+     * @return the given template.
+     */
+    private StringTemplate resetTemps(StringTemplate template)
+    {
+        this.nextTemp = 0;
+        return template;
+    }
+
+    /**
+     * Control flow management:
+     * Next available label number.
+     */
+    private int nextLabel = 0;
+
+    /**
+     * @param node an AST node, known to be type INT_LITERAL.
+     * @param opcode PLUS or MINUS.
+     * @return true if the literal's value fits in a signed 16 bit
+     * 2's complement field, which means it can be used as an
+     * immediate operand in MIPS instructions.
+     */
+    int constantInRange(Tree node, int opcode)
+    {
+        // The only AST type that reduces to 
+        // intConstant is INT_LITERAL.
+        assert node.getType() == INT_LITERAL;
+
+        int value = Integer.parseInt(node.getText());
+
+        // Adjust the range if we're asking about subtraction;
+        // we'll be adding a negative number, which has a 
+        // different boundary than a positive number in a 
+        // 2's complement system.
+        if ( opcode == MINUS )
+            value = -value;
+
+        return ( value >= -32768 && value < 32768 )?
+            1:
+            Integer.MAX_VALUE;
+    }
+}
+
+/*
+ * Program-level goal: a program is a
+ * COMPILATION_UNIT node with zero or more
+ * statement-level children.
+ */
+compilationUnit = COMPILATION_UNIT(functionDecl functions*): 1
+{
+    return templateManager.getTemplate(
+        "compilationUnit",
+        "textSegmentItems", functions,
+        "dataSegmentItems", this.dataSegmentItems
+    );
+}
+
+functionDecl = FUNCTION(name id, ARGUMENTS(formalArgument formals*), FUNCTION_BODY(DECLS(localDeclaration locals*), BODY(statement body*))):1
+@Prologue
+{
+    this.frame = new SimplifiedCallFrame();
+    this.frame.setNeedsRaSaved(true);
+}
+{
+    return templateManager.getTemplate(
+        "functionDecl",
+        "id", id,
+        "frame", this.frame,
+        "formals", formals,
+        "locals", locals,
+        "body", body
+    );
+}
+
+formalArgument = FORMAL(typename type, name name): 1
+{
+    this.frame.addFormal(#formalArgument);
+    return null;
+}
+
+typename = INT_TYPE(void):1
+{
+    return null;
+}
+
+/*
+ * Statement-level goals:
+ * declarations
+ * assignment statements
+ * print pseudo-statement
+ */
+
+// Declare a local variable.
+// This rule returns null, because it allocates
+// stack space for the local as a side effect.
+localDeclaration = LOCAL(typename type, name name): 1
+{
+    this.frame.addLocal(#localDeclaration);
+    return null;
+}
+
+// Assign a value to a local variable.
+statement = ASSIGNMENT(name lvalue, intExpression rvalue): 1
+{
+    return resetTemps(templateManager.getTemplate("storeLocal", "offset", frame.getOffset(lvalue), "rvalue", rvalue));
+}
+
+statement = IF(EQUAL_EQUAL(intExpression lhs, intExpression rhs), statement consequent): 1
+{
+    return resetTemps(templateManager.getTemplate(
+        "ifThenEQ",
+        "lhs", lhs,
+        "rhs", rhs,
+        "consequent", consequent,
+        "branchOutLabelID", nextLabel++
+    ));
+}
+
+statement = IF(EQUAL_EQUAL(intExpression lhs, intExpression rhs), statement consequent, ELSE(statement elseClause)): 1
+{
+    return resetTemps(templateManager.getTemplate(
+        "ifThenElseEQ",
+        "lhs", lhs, "rhs", rhs,
+        "consequent", consequent,
+        "elseClause", elseClause,
+        "branchOutLabelID", nextLabel++,
+        "elseLabelID", nextLabel++
+    ));
+}
+
+statement = IF(boolean condition, statement consequent): 5
+{
+    return resetTemps(templateManager.getTemplate(
+        "ifThen",
+        "condition", condition,
+        "consequent", consequent,
+        "branchOutLabelID", nextLabel++
+    ));
+}
+
+statement = IF(boolean condition, statement consequent, ELSE(statement elseClause) ): 5
+{
+    return resetTemps(templateManager.getTemplate(
+        "ifThenElse",
+        "condition", condition,
+        "consequent", consequent,
+        "elseClause", elseClause,
+        "branchOutLabelID", nextLabel++,
+        "elseLabelID", nextLabel++
+    ));
+}
+
+statement = WHILE(boolean condition, statement body): 1
+{
+    return resetTemps(templateManager.getTemplate(
+        "while",
+        "condition", condition,
+        "body", body,
+        "loopHeadLabelID", nextLabel++,
+        "branchOutLabelID", nextLabel++
+    ));
+}
+
+statement = RETURN(expression expr):1
+{
+    return resetTemps(templateManager.getTemplate("returnValue","expr", expr, "frame", frame));
+}
+
+statement = PRINT(printItem contents+): 1
+{
+    // The individual printItem reductions implement the
+    // actual syscalls; the PRINT statement is simply a holder.
+    return templateManager.getTemplate("block", "contents", contents);
+}
+
+printItem = intExpression: 1
+{
+    return resetTemps(templateManager.getTemplate("printInteger", "expr", intExpression));
+}
+
+printItem = stringExpression: 1
+{
+    return resetTemps(templateManager.getTemplate("printString", "expr", stringExpression));
+}
+
+statement = READ(name dest): 1
+{
+    return templateManager.getTemplate("readInteger", "dest", frame.getOffset(dest));
+}
+
+statement = BLOCK(statement contents*): 1
+{
+    return templateManager.getTemplate("block", "contents", contents);
+}
+
+/*
+ * Expression-level goals.
+ */
+intExpression = CALL(name name, expression actuals*):1
+{
+    List<Object> savedActuals = new ArrayList<Object>();
+    Object pushArgArea = null;
+    Object popArgArea  = null;
+
+    for ( int i = 0; i < actuals.size(); i++ ) {
+        savedActuals.add(actuals.get(i));
+        savedActuals.add(templateManager.getTemplate("storeLocal", "offset", i*4, "rvalue", actuals.get(i)));
+    }
+
+    if (savedActuals.size() > 0) {
+        this.frame.pushSaveArea(savedActuals.size());
+
+        pushArgArea = actuals.size() > 0 ?  templateManager.getTemplate("pushStack", "size", actuals.size() * 4): null;
+        popArgArea  = actuals.size() > 0 ?  templateManager.getTemplate("popStack",  "size", actuals.size() * 4): null;
+    }
+
+    return allocateTemp(templateManager.getTemplate(
+        "call",
+        "name", name,
+        "arguments", savedActuals,
+        "callerSave", pushArgArea,
+        "callerRestore", popArgArea
+    ));
+}
+
+intExpression = PLUS(intExpression lhs, intExpression rhs):1
+{
+    return allocateTemp(templateManager.getTemplate("add", "lhs", lhs, "rhs", rhs));
+}
+
+// Prefer to use addi to add integer constants in range.
+intExpression = PLUS(intExpression lhs, intConstant rhs): constantInRange(getNode().getChild(1), PLUS)
+{
+    return allocateTemp(templateManager.getTemplate("addi", "lhs", lhs, "rhs", rhs));
+}
+
+intExpression = MINUS(intExpression lhs, intExpression rhs):1
+{
+    return allocateTemp(templateManager.getTemplate("sub", "lhs", lhs, "rhs", rhs));
+}
+
+// Prefer to use addi to subtract integer constants in range.
+intExpression = MINUS(intExpression lhs, intConstant rhs): constantInRange(getNode().getChild(1), MINUS)
+{
+    return allocateTemp(templateManager.getTemplate("addi", "lhs", lhs, "rhs", -rhs));
+}
+
+intExpression = ASTERISK(intExpression lhs, intExpression rhs):1
+{
+    return allocateTemp(templateManager.getTemplate("mult", "lhs", lhs, "rhs", rhs));
+}
+
+// Perform arithmetic on constants at compile time.
+intConstant = PLUS(intConstant lhs, intConstant rhs):1
+{
+    return lhs + rhs;
+}
+
+intExpression = intConstant: 2
+{
+    return allocateTemp(templateManager.getTemplate("li", "expr", intConstant));
+}
+
+intExpression = name: 1
+{
+    return allocateTemp(templateManager.getTemplate("loadLocal", "offset", frame.getOffset(name)));
+}
+
+stringExpression = stringConstant: 1
+{
+    String name = String.format("__literal_x%h", this.dataSegmentItems.size());
+    this.dataSegmentItems.add(
+        templateManager.getTemplate(
+            "declareStringConstant",
+            "name", name,
+            "initializer", stringConstant
+        )
+    );
+
+    return allocateTemp(templateManager.getTemplate("la", "lvalue", name));
+}
+
+expression = stringExpression;
+expression = intExpression;
+
+boolean = LT(intExpression lhs, intExpression rhs): 1
+{
+    return allocateTemp(templateManager.getTemplate("lt", "lhs", lhs, "rhs", rhs));
+}
+
+name = ID(void): 1
+{
+    return #name.getText();
+}
+
+intConstant = INT_LITERAL(void): 1
+{
+    return Integer.parseInt(#intConstant.getText());
+}
+
+stringConstant = STRING_LITERAL(void): 1
+{
+    return #stringConstant.getText();
+}

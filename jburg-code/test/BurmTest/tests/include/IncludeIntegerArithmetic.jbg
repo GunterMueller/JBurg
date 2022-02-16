@@ -1,0 +1,8 @@
+//  A @include directive with macro subsitutions.
+//  SUBSTITUTE_ADD is a simple 1-1 substitution.
+//  SUBSTITUTE_INT introduces 4 new tokens: INT, (, void, ).
+//  { "#int#"="intValue()" } is a regex substitution applied to the reduction.
+//  There's nothing magical about the ## "delimiters," they just made the 
+//  substitution points obvious and caused the Java compiler to complain
+//  in an easily-recognized fashion during debugging.
+@include "IntegerArithmetic.jbg" SUBSTITUTE_ADD="ADD" SUBSTITUTE_INT="INT(void)" { "#int#"="intValue()" }

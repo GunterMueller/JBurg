@@ -1,0 +1,17 @@
+implements burmTest.ArithmeticOpcodes;
+
+Language Javascript;
+
+// TODO: Make these optional if the emitter doesn't use them.
+INodeType  DontCare;
+ReturnType DontCare;
+
+expression=ADD(expression lhs, expression rhs): 1
+{
+    return lhs + rhs;
+}
+
+expression = INT(void): 1
+{
+    return #expression;
+}

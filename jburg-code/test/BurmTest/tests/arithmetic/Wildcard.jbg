@@ -1,0 +1,15 @@
+@Implements burmTest.ArithmeticOpcodes;
+
+@INodeType  burmTest.TestINode;
+@ReturnType Integer;
+@WildcardState anything;
+
+expression=PAREN(expression ex): 1
+{
+    return ex;
+}
+
+expression = ADD(anything stuff*): 1
+{
+    return stuff.size();
+}

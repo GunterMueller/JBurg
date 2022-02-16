@@ -1,0 +1,21 @@
+@include "IntegerArithmetic.jbg"
+
+expression = ADD(expression operands+): 1
+{
+    int result = 0;
+
+    for ( Integer i: operands)
+        result += i.intValue();
+
+    return result;
+}
+
+expression = PAREN(expression operands*): 0
+{
+    int result = 0;
+
+    for ( Integer i: operands)
+        result += i.intValue();
+
+    return result;
+}

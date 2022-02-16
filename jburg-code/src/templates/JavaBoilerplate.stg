@@ -1,0 +1,513 @@
+/*
+ */
+group JavaBoilerplate;
+
+
+explicitAnnotation() ::= <<
+<if(defaults.annotationAccessor)><config.annotationInterfaceName> p = (<config.annotationInterfaceName>) getAnnotation(node);<endif>
+>>
+
+reduceParameter() ::= << <reduceParameterType(...)> <reduceParameterName(...)> >>
+
+reduceParameterName() ::= <<
+<if(defaults.annotationAccessor)>node<else>p<endif>
+>>
+
+reduceParameterType() ::= <<
+<if(defaults.annotationAccessor)><defaults.iNodeClass><else><config.annotationInterfaceName><endif>
+>>
+
+/* FIXME: Duplicated from JavaSnippets */
+goalStateUndecorated(state) ::= <<
+__<state>_NT
+>>
+
+trailer(prologueCases, defaultErrorHandler, problemTree, ntIterator, wildcardGoal, getNthChildI,subParentArity) ::= <<
+
+    /**
+     * Reduce a labeled subtree.
+     * @param p the annotation describing the root of the subtree.
+     * @param goalState the required goal state.
+     */
+    public void reduce(<reduceParameter(...)>, <defaults.ntType> goalState) throws java.lang.Exception
+	{
+        <explicitAnnotation(...)>
+		reduceAntecedent(<reduceParameterName(...)>,goalState);
+		// Release the annotation's data.
+		p.release();
+	}
+
+    public void reduceAntecedent(<reduceParameter(...)>, <defaults.ntType> goalState) throws java.lang.Exception
+	{
+        int iRule  = -1;
+        <explicitAnnotation(...)>
+
+        <if (config.wildcardState)>
+        if (goalState == <goalStateUndecorated(config.wildcardState)>) {
+            <if(defaults.annotationAccessor)>
+            __reducedValues.push(node);
+            <else>
+            __reducedValues.push(<reduceParameterName(...)>.getNode());
+            <endif>
+            return;
+        }
+        else<endif>
+        if (goalState != <wildcardGoal>) {
+            iRule = p.getRule(goalState);
+		} else {
+			// Find the minimum-cost path.
+            int minCost  = Integer.MAX_VALUE;
+
+            <ntIterator> {
+				if ( ( minCost \> p.getCost(i) )  ) {
+                    iRule = p.getRule(i);
+                    minCost = p.getCost(i);
+                    goalState = i;
+				}
+			}
+		}
+
+		if (iRule \> 0) {
+            <if(prologueCases)>
+            dispatchPrologue(p.getNode(), iRule);
+            <endif>
+			reduceSubgoals(<reduceParameterName(...)>, iRule);
+			dispatchAction(<reduceParameterName(...)>, iRule );
+		} else {
+            <if(defaultErrorHandler)>
+            <defaultErrorHandler>
+            <else>
+			throw new IllegalStateException ( String.format("Unable to find a rule to process \"%s\", operator=%s, goal=%s", p, p.getOperator(), goalState) );
+            <endif>
+		}
+	}
+
+<if(prologueCases)>
+
+    private void dispatchPrologue(<defaults.iNodeClass> p, int iRule)
+    {
+        switch(iRule)
+        {
+            <prologueCases; separator="\n">
+        }
+    }
+<endif>
+
+    private void reduceSubgoals(<reduceParameter(...)>,int rule_num) throws java.lang.Exception
+	{
+		if ( ___subgoals_by_rule[rule_num] != null )
+		{
+			for ( JBurgSubgoal sg : ___subgoals_by_rule[rule_num] )
+			{
+				if ( !sg.isNary() )
+				{
+					reduce ( sg.getNode(<reduceParameterName(...)>), sg.getGoalState());
+				}
+				else
+				{
+					// Aggregate the operands of an n-ary operator into a single container.
+					<reduceParameterType(...)> sub_parent = sg.getNode(<reduceParameterName(...)>);
+                    <if(defaults.annotationAccessor)>
+                    int arity = <subParentArity>;
+                    <else>
+                    int arity = sub_parent.getArity();
+                    <endif>
+					java.util.Vector\<Object\> variadic_result = new java.util.Vector\<Object\>(arity - sg.startIndex);
+
+					for ( int i = sg.startIndex; i \< arity; i++ )
+					{
+                        <if(defaults.annotationAccessor)>
+						reduce(<getNthChildI>, sg.getGoalState());
+                        <else>
+						reduce(sub_parent.getNthChild(i), sg.getGoalState());
+                        <endif>
+						variadic_result.add(__reducedValues.pop());
+					}
+					__reducedValues.push(variadic_result);
+				}
+			}
+		}
+	}
+
+    /**
+     * Get the cost of an n-ary tail of candidate reductions.
+     * @param Node the parent of the candidates.
+     * @param goalState the desired goal state.
+     * @param startIndex the starting position of
+     * the n-ary tail in the parent's children.
+     * @return the sum of the n-ary children's costs
+     * for the desired goal state, capped at 
+     * Integer.MAX_VALUE - 1 if all child costs
+     * were strictly less than Integer.MAX_VALUE.
+     */
+    private int getNaryCost(<reduceParameter(...)>, <defaults.ntType> goalState, int startIndex)
+	{
+		long accumCost = 0;
+        <explicitAnnotation(...)>
+
+		for ( int i = startIndex; accumCost \< Integer.MAX_VALUE && i \< p.getArity(); i++ )
+        {
+            // Don't allow the cost of a series of feasible child reductions
+            // to rise above MAX_VALUE; the concept of "feasability" and the
+            // concept of "cost" need to be disconnected.
+            int  childCost = p.getNthChild(i).getCost(goalState);
+
+            if ( childCost >= Integer.MAX_VALUE )
+                return Integer.MAX_VALUE;
+            else
+                accumCost += childCost;
+        }
+
+		return accumCost \< Integer.MAX_VALUE? (int)accumCost: Integer.MAX_VALUE - 1;
+	}
+
+    /**
+     * Reduce a subtree to the least-cost solution available.
+     * @param root the root of the subtree.
+     */
+    public void burm(<defaults.iNodeClass> root) throws java.lang.Exception
+	{
+		/* Use the least-cost goal state available. */
+		burm(root, <wildcardGoal>);
+	}
+	
+    /**
+     * Reduce a subtree to a specific goal state.
+     * @param root the root of the subtree.
+     * @param goal_state the desired goal.
+     */
+    public void burm(<defaults.iNodeClass> root, <defaults.ntType> goal_state) throws java.lang.Exception
+	{
+		<config.annotationInterfaceName> annotatedTree = label(root);
+
+        <if(defaults.debugMode)>
+        try
+        {
+            reduce(annotatedTree, goal_state);
+        }
+        catch ( Exception cant_reduce )
+        {
+            this.<problemTree> = annotatedTree;
+            throw cant_reduce;
+        }
+        <elseif(defaults.annotationAccessor)>
+        // FIXME: Also do this for debug mode
+		reduce(root, goal_state);
+        <else>
+		reduce(annotatedTree, goal_state);
+        <endif>
+	}
+	
+    /**
+     * Get the (presumably only) final
+     * result of a series of reductions.
+     */
+    public Object getResult()
+	{
+		return __reducedValues.pop();
+	}
+
+    /**
+     * @return the sum of the input costs, normalized as follows:
+     * \<li>If either parameter equals Integer.MAX_VALUE, return Integer.MAX_VALUE.
+     * \<li>If the sum is less than Integer.MAX_VALUE, return the sum.
+     * \<li>Otherwise return Integer.MAX_VALUE-1.
+     */
+    public int normalizedAdd(int c1, int c2)
+    {
+        int result = Integer.MAX_VALUE;
+
+        if ( c1 \< Integer.MAX_VALUE && c2 \< Integer.MAX_VALUE )
+        {
+            long accum = (long)c1 + (long)c2;
+            result = accum \< Integer.MAX_VALUE?
+                (int)accum:
+                Integer.MAX_VALUE-1;
+        }
+
+        return result;
+    }
+>>
+
+interfaceDeclaration(getOperator) ::= <<
+	/** 
+     *  <config.annotationInterfaceName> is a data structure internal to the
+	 *  JBurg-generated BURM that annotates a <defaults.iNodeClass> with
+	 *  information used for dynamic programming and reduction.
+	 */
+	public abstract static class <config.annotationInterfaceName>
+	{
+		/**  The <defaults.iNodeClass> this <config.annotationInterfaceName> describes.  */
+		<defaults.iNodeClass> m_node; 
+		<config.annotationInterfaceName> ( <defaults.iNodeClass> newNode)
+		{
+			m_node = newNode;
+		}
+
+		/** @return this node's wrapped <defaults.iNodeClass>. */ 
+		public <defaults.iNodeClass> getNode()  
+		{
+			return m_node; 
+		}
+
+		/** @return this node's operator. */
+		public <defaults.operatorType> getOperator() 
+		{
+			return <getOperator>;
+		}
+
+        public String getSelfDescription()
+        {
+            return "?";
+        }
+
+		/** @return the nth child of this node.  */
+		public abstract <config.annotationInterfaceName> getNthChild(int idx);
+
+		/** @return this node's child count.  */
+		public abstract int getArity();
+
+		/** Add a new child to this node.  */
+		public abstract void addChild(<config.annotationInterfaceName> new_child);
+
+		/** Release this node's data.  */
+		public abstract void release();
+
+		/** @return the wrapped node's toString().  */
+		public String toString() 
+		{
+			return m_node.toString(); 
+		}
+
+		/** @return the current best cost to reach a goal state.  */
+		public abstract int getCost( <defaults.ntType> goalState ) ;
+
+		/** * @return the rule to fire for a specific goal state. */
+		public abstract int getRule ( <defaults.ntType> goalState ) ;
+
+		/**
+		 *  A closure's transformation rule succeeded.
+		 *  If this path is selected for reduction, then all the actions  must be run in sequence, beginning with the original;
+		 *  so the order of the rules matters.  We disallow transformation rules with  cycles (a node should never 
+		 *  transition back to a goal state that has already been reduced).*/
+		public abstract void recordAntecedent ( int iGoalState, int newAntecedentState );
+	
+	}
+>>
+
+annotation(getOperator, getNthChildIdx) ::= <<
+
+    <interfaceDeclaration(getOperator)>
+
+    /**
+     * Common superclass of node-specific annotations.
+     */
+	abstract static class JBurgSpecializedAnnotation extends <config.annotationInterfaceName>
+	{
+		JBurgSpecializedAnnotation(<config.options.className> burm, <defaults.iNodeClass> node)
+		{
+			super(node);
+		}
+
+		public <config.annotationInterfaceName> getNthChild(int idx)
+		{
+			throw new IllegalStateException(this.getClass().getName() + " has no children.");
+		}
+
+		public void addChild(<config.annotationInterfaceName> new_child)
+		{
+			throw new IllegalStateException(this.getClass().getName() + " cannot have children.");
+		}
+
+		public void release ()
+		{
+		}
+
+		public void recordAntecedent ( int iGoalState, int newAntecedentState )
+		{
+			throw new IllegalStateException(this.getClass().getName() + " cannot record antecedents.");
+		}
+	}
+
+    /**
+     * An annotation that denotes an unused node in the tree.
+     */
+	private static class PlaceholderAnnotation extends JBurgSpecializedAnnotation
+	{
+		PlaceholderAnnotation(<config.options.className> burm, <defaults.iNodeClass> node, int capacity)
+		{
+			super(burm, node);
+            this.children = new <config.annotationInterfaceName>[capacity];
+		}
+
+        <config.annotationInterfaceName> [] children;
+        int actualChildCount = 0;
+
+        <if (config.wildcardState)>
+		public int getCost(<defaults.ntType> state)     { return state == <goalStateUndecorated(config.wildcardState)> ? 1: Integer.MAX_VALUE; }
+        <else>
+		public int getCost(<defaults.ntType> state)     { return Integer.MAX_VALUE; }
+        <endif>
+		public int getRule(<defaults.ntType> state)     { return -1; }
+		public int getArity()                           { return actualChildCount; }
+
+		public <config.annotationInterfaceName> getNthChild(int idx)     { return children[idx]; }
+		public void addChild(<config.annotationInterfaceName> newChild)  { children[actualChildCount++] = newChild; }
+	}
+
+    /**
+     * An annotation that describes a pattern-match failure.
+     */
+    private final static <config.annotationInterfaceName> errorAnnotation = new JBurgSpecializedAnnotation(null, null)
+    {
+		public int getRule(<defaults.ntType> state) { return -1; }
+		public int getCost(<defaults.ntType> state) { return Integer.MAX_VALUE; }
+		public int getArity()                       { return 0; }
+    };
+
+    /**
+     * JBurgSubgoal describes a possible reduction of a subtree.
+     */
+	static class JBurgSubgoal
+	{
+        /** The goal state that this subgoal produces. */
+		private <defaults.ntType> goalState;
+        /** Is this subgoal an n-ary tail? */
+		private boolean isNary;
+        /** If this is an n-ary subgoal, where does it start? */
+		private int startIndex ;
+        /** Path from the ancestor node to the root of the subtree. */
+		private int[] accessPath ;
+
+        public  JBurgSubgoal(<defaults.ntType> goal_state,boolean is_nary,int start_index,int... access_path)
+		{
+			this.goalState = goal_state;
+			this.isNary = is_nary;
+			this.startIndex = start_index;
+			this.accessPath = access_path;
+		}
+		public <defaults.ntType> getGoalState() { return this.goalState; }
+		public boolean isNary() { return this.isNary; }
+        /**
+         * Traverse the access path from the ancestor subtree
+         * to the root of this subgoal's subtree.
+         * @param ancestor the ancestor node.
+         */
+		public <reduceParameterType(...)> getNode(<reduceParameterType(...)> ancestor)
+		{
+			<reduceParameterType(...)> result = ancestor;
+			for ( int idx: this.accessPath )
+                <if(defaults.annotationAccessor)>
+				result = <getNthChildIdx>;
+                <else>
+				result = result.getNthChild(idx);
+                <endif>
+			return result;
+		}
+	
+	}
+>>
+
+debuggingSupport(problemTree, stateNames, ntStateName, ntIterator, getOperator) ::= <<
+<if(defaults.debugMode)>
+
+	private <config.annotationInterfaceName> <problemTree>;
+	
+    public void dump(java.io.PrintWriter debug_output)
+	{
+		if ( null == __problemTree )
+		{
+			debug_output.print("\<bailed reason=\"no problem tree\"/\>");
+			
+			return;
+		}
+		debug_output.print("\<jburg\>");
+		dumpSubgoals(debug_output);
+		debug_output.print("\<label\>");
+		describeNode(__problemTree,debug_output);
+		debug_output.print("\</label\>\</jburg\>");
+	}
+	
+    public void dump(<defaults.iNodeClass> node,java.io.PrintWriter debug_output)
+	{
+		<config.annotationInterfaceName> anno = label(node);
+		debug_output.println("\<?xml version=\"1.0\"?\>");
+		debug_output.println("\<BurmDump date=\"" + new java.util.Date() + "\"\>");
+		debug_output.println("\<jburg\>");
+		dumpSubgoals(debug_output);
+		debug_output.println("\<label\>");
+		describeNode(anno,debug_output);
+		debug_output.println("\</label\>\n\</jburg\>\n\</BurmDump\>");
+		debug_output.flush();
+	
+	}
+
+    public void describeNode(<config.annotationInterfaceName> node,java.io.PrintWriter debug_output)
+	{
+		if ( node == null )
+            return;
+
+		String self_description = node.getSelfDescription();
+		try {
+			self_description = java.net.URLEncoder.encode(self_description,"UTF-8");
+		
+		} catch ( Exception cant_encode ) {
+            // Just use the description as given.
+		}
+
+		debug_output.printf("\<node operator=\"%d\" selfDescription=\"%s\"/\>", node.getOperator(), self_description);
+
+		<ntIterator> {
+
+			if ( node.getCost(i) \< Integer.MAX_VALUE ) {
+
+				debug_output.print ( "\<goal");
+				debug_output.print ( " name=\"" + <ntStateName> + "\"");
+				debug_output.print ( " rule=\"" + node.getRule(i) + "\"");
+				debug_output.print ( " cost=\"" + node.getCost(i) + "\"");
+				debug_output.println ( "/\>" );
+			}
+		}
+
+		for (int i = 0; i \< node.getArity(); i++ )
+            describeNode ( node.getNthChild(i),debug_output);
+		debug_output.println ( "\</node\>" );
+	
+	}
+
+    private void dumpSubgoals(java.io.PrintWriter debug_output)
+	{
+		for ( int rule_num = 0; rule_num \< ___subgoals_by_rule.length; rule_num++ )
+        {
+            if ( ___subgoals_by_rule[rule_num] != null )
+            {
+                debug_output.printf("\<subgoals rule=\"%d\"\>\n", rule_num);
+
+                for ( JBurgSubgoal sg : ___subgoals_by_rule[rule_num] )
+                {
+                    debug_output.printf("\<subgoal goal=\"%s\" nary=\"%s\" startIndex=\"%s\"", stateName[sg.getGoalState()], sg.isNary(), sg.startIndex);
+
+                    if ( sg.accessPath.length \> 0 )
+                    {
+                        debug_output.println("\>");
+                        for ( int idx: sg.accessPath )
+                        debug_output.printf("\<accessPath index=\"%d\"/\>\n", idx);
+                        debug_output.printf("\</subgoal\>\n");
+                    }
+                    else
+                    {
+                        debug_output.println("/\>");
+                    }
+                }
+                debug_output.printf("\</subgoals\>\n");
+            }
+		}
+	}
+
+    static final String[] stateName = new String[] { null, <stateNames:stringify(); separator=","> };
+<endif>
+>>
+
+stringify(x) ::= <<
+"<x>"
+>>

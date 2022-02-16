@@ -1,0 +1,26 @@
+@Implements burmTest.ArithmeticOpcodes;
+
+@INodeType  burmTest.TestINode;
+@ReturnType Integer;
+@WildcardState anything;
+
+@Header
+{
+    import java.util.Vector;
+    @SuppressWarnings("unchecked")
+}
+
+@GetAnnotation(p)
+{
+    return p.getAnnotation();
+}
+
+@SetAnnotation(p,Object anno)
+{
+    p.setAnnotation(anno);
+}
+
+expression=ADD(anything operands*): 1
+{
+    return operands.size();
+}

@@ -1,0 +1,539 @@
+group CppBoilerplate;
+
+annotation(getOperator, getNthChildIdx) ::= <<>>
+
+annotationAccessorStaticDefinitions() ::= <<
+<if (config.iNodeAdapter.getOperatorParameterName)>
+static <defaults.operatorType> _jburg_getOperator(<defaults.iNodeClass> <config.iNodeAdapter.getOperatorParameterName>)
+{
+    <config.iNodeAdapter.getOperator>
+}
+
+static <defaults.iNodeClass> _jburg_getNthChild(<defaults.iNodeClass> <config.iNodeAdapter.getNthChildParameterName>, int <config.iNodeAdapter.getNthChildIndex>)
+{
+    <config.iNodeAdapter.getNthChild>
+}
+
+static int _jburg_getChildCount (<defaults.iNodeClass> <config.iNodeAdapter.getArityParameterName>)
+{
+    <config.iNodeAdapter.getArity>
+}
+<endif>
+>>
+
+debuggingSupport(problemTree,stateNames,ntStateName,ntIterator,getOperator) ::= <<
+<if(defaults.debugMode)>
+public:
+    void dump(JBurgAnnotation\<<defaults.iNodeClass>\>* node, FILE* debug_output)
+    {
+        if (!node ) {
+            fprintf(debug_output,"\<bailed reason=\"no problem tree\"\>\n");
+            return;
+        } else {
+            fprintf(debug_output, "\<BurmDump date=\"Sometime\">\n");
+            fprintf(debug_output, "\<jburg\>\<label\>");
+            describeNode(node, debug_output);
+            fprintf(debug_output, "\</label\>\</jburg\>\n");
+            fprintf(debug_output, "\</BurmDump>");
+        }
+	}
+
+private:
+    void describeNode(JBurgAnnotation\<<defaults.iNodeClass>\>* node, FILE* debugOutput)
+    {
+        if ( !node )
+            return;
+
+        fprintf(debugOutput, "\\n\<node operator=\"%d\" selfDescription=\"%s\"\>", node-\>getOperator(), node-\>getSelfDescription());
+
+        for (int i = 0; i \<= nStates ; i++ ) {
+            if ( node-\>getRule(i) ) {
+                fprintf(debugOutput, "\<goal");
+                fprintf(debugOutput, " name=\"%s\"",  jburg::stateName->at(i));
+                fprintf(debugOutput, " rule=\"%d\"" , node->getRule(i));
+                fprintf(debugOutput, " cost=\"%d\"" , node->getCost(i));
+                fprintf(debugOutput, "/\>");
+            }
+        }
+        for (int i = 0; i \< node-\>getArity(); i++ )
+            describeNode ( node-\>getNthChild(i), debugOutput );
+        fprintf(debugOutput,"\</node\>\n" );
+    }
+<endif>
+>>
+
+emitStateName(stateName) ::= <<
+result->push_back("<stateName>");
+>>
+
+emitStateNames(stateNames) ::= <<
+>>
+
+explicitAnnotation() ::= <<
+<if(defaults.annotationAccessor)><"JBurgAnnotation";format="typeReference"> p = (<"JBurgAnnotation";format="typeReference">) getAnnotation(node);<endif>
+>>
+
+forwardDeclareSingleton(singletonClass) ::= <<
+class <singletonClass>;
+<singletonClass>* get<singletonClass>_instance();
+>>
+
+/* FIXME: duplicated from CppSnippets */
+goalStateUndecorated(nt) ::= <<
+__<nt>_NT
+>>
+
+nonterminalConstant(nt) ::= <<
+static const int <goalStateUndecorated(nt)> = <i>;
+>>
+
+header(baseClass, interfaceNames, getOperator, packageName, headerBlock, getNthChildIdx, annotationAccessor, singletonAnnotations, nStates) ::= <<
+#include \<iostream\>
+#include \<string\>
+#include \<stack\>
+#include \<exception\>
+#include \<memory\>
+#include \<sstream\>
+#include \<limits\>
+#include \<stdexcept\>
+#include \<vector\>
+#include \<algorithm\>
+
+#define MAX_INT_VALUE std::numeric_limits\<int\>::max()
+
+<if(defaults.annotationAccessor)>
+<if (config.iNodeAdapter.getOperatorParameterName)>
+static <defaults.operatorType> _jburg_getOperator(<defaults.iNodeClass> <config.iNodeAdapter.getOperatorParameterName>);
+static <defaults.iNodeClass> _jburg_getNthChild(<defaults.iNodeClass> <config.iNodeAdapter.getNthChildParameterName>, int <config.iNodeAdapter.getNthChildIndex>);
+static int _jburg_getChildCount (<defaults.iNodeClass> <config.iNodeAdapter.getArityParameterName>);
+
+<endif>
+<endif>
+
+namespace jburg {
+	int getOperator( <defaults.iNodeClass> m_node )
+	{
+        return <getOperator>;
+	}
+
+    int normalizedAdd(int c1, int c2)
+    {
+        int result = MAX_INT_VALUE;
+
+        if ( c1 \< MAX_INT_VALUE && c2 \< MAX_INT_VALUE )
+            {
+                long long accum = (long long)c1 + (long long)c2;
+                result = accum \< MAX_INT_VALUE?
+                    (int)accum:
+                    MAX_INT_VALUE;
+            }
+
+            return result;
+    }
+
+    std::string stringIntConcat(std::string strArg, int intArg) {
+
+        std::stringstream s;
+        s \<\< strArg;
+        s \<\< intArg;
+        return s.str();
+    }
+
+    <if(defaults.debugMode)>
+    static std::vector\<const char*\>* stateName;
+    std::vector\<const char*\>* initializeStateNames() {
+        std::vector\<const char*\>* result = new std::vector\<const char*\>();
+        result->push_back(NULL);
+        <config.goalStateNames:emitStateName(); separator="\n">
+        return result;
+    }
+    <endif>
+
+    struct ReducerIntermediateResult
+    {
+        <config.returnTypes;format="intermediateTypeDeclaration">
+        std::vector\<ReducerIntermediateResult\> variadicResult;
+    };
+
+    <config.returnTypes:variadicWrapper()>
+}
+
+<singletonAnnotations:forwardDeclareSingleton()>
+
+template\<typename T\> class JBurgAnnotation <if (config.annotationBaseClassName)>: public <config.annotationBaseClassName><endif>
+{
+public:
+    JBurgAnnotation( T node ):
+        m_node(node)
+    {
+    }
+
+    virtual ~JBurgAnnotation()
+    {
+    }
+
+    virtual T               getNode() { return m_node; }
+	virtual <defaults.operatorType> getOperator() { return <getOperator>;}
+	virtual std::string 	toString() = 0;
+	virtual int				getCost(int goalState) = 0;
+	virtual int				getRule(int goalState) = 0;
+	
+	/**
+	 *  @return the number of children of this node.
+	 */
+	virtual int getArity() = 0;
+
+	/**
+	 *  @return the child at the specified index.
+	 *  @throw std::runtime_error if the child index is out of bounds.
+	 */
+	virtual JBurgAnnotation\<T\>* getNthChild(int idx) = 0;
+
+	/**
+	 *  Add a new child node.
+	 *  @post this node assumes ownership of the child node.
+	 */
+	virtual void addChild(JBurgAnnotation\<T\>* new_child) = 0;
+
+    virtual const char* getSelfDescription()
+    {
+        return getNode()-\>toString().c_str();
+    }
+
+protected:
+    int getNaryCost( JBurgAnnotation\<T\>* node, int goalState, int startIndex)
+    {
+        int accum = 0;
+	
+        for ( int i = startIndex; i \< node-\>getArity(); i++ )
+            accum = jburg::normalizedAdd(accum, node->getNthChild(i)-\>getCost(goalState));
+
+        return (accum);
+    }
+
+private:
+        T   m_node;
+public:
+	class JBurgSubgoal
+	{
+	public:
+		JBurgSubgoal(const int subgoal_state, const bool is_nary, const int start_index, const std::vector\<int\> access_path):
+            subgoalState(subgoal_state)
+            , m_isNary(is_nary)
+            , startIndex(start_index)
+            , accessPath(access_path)
+		{
+		}
+
+	public:
+
+		/// @return the state to which the node must be reduced.
+		const int getGoalState() const { return this-\>subgoalState; }
+        ///  @return true if the node is n-ary.
+        const bool isNary() const { return this-\>m_isNary; }
+        ///  @return the node's start index.
+        const int getStartIndex() const { return this-\>startIndex; }
+
+        ///  @return the root node's child specified by the access path.
+        <reduceParameterType(...)> getNode(<reduceParameterType(...)> ancestor) const
+        {
+            <reduceParameterType(...)> result = ancestor;
+            for ( size_t idx = 0; idx \< accessPath.size(); idx++ )
+                <if(defaults.annotationAccessor)>
+				result = <getNthChildIdx>;
+                <else>
+                result = result-\>getNthChild(accessPath[idx]);
+                <endif>
+            return result;
+        }
+
+	private:
+		int subgoalState;
+        bool m_isNary;
+        int startIndex;
+        std::vector\<int\> accessPath;
+
+	};
+};
+    
+namespace jburg {
+    std::vector\<<"JBurgAnnotation";format="annotationAsTemplateArg">::JBurgSubgoal\>& get_subgoals_by_rule(size_t rule_num);
+}
+
+    <if(defaults.annotationAccessor)>
+    <"JBurgAnnotation";format="typeReference"> getAnnotation(<defaults.iNodeClass> <defaults.annotationAccessor.getParameterName>)
+    <defaults.annotationAccessor.getAccessor>
+    <endif>
+
+class <config.options.className>;
+class JBurgSpecializedAnnotation: public JBurgAnnotation\<<defaults.iNodeClass>\>
+{
+public:
+    JBurgSpecializedAnnotation(<config.options.className>* burm, <defaults.iNodeClass> node)
+        :JBurgAnnotation\<<defaults.iNodeClass>\>(node), burm(burm)
+        {
+        }
+    virtual int				getCost(int goalState) { return MAX_INT_VALUE; }
+    virtual int				getRule(int goalState) { return -1; }
+    virtual int getArity() { return 0; }
+    virtual JBurgAnnotation\<<defaults.iNodeClass>\>* getNthChild(int idx) { throw std::logic_error("placeholder"); }
+    virtual void addChild(JBurgAnnotation\<<defaults.iNodeClass>\>* new_child) { }
+    virtual std::string toString() { throw std::logic_error("placeholder"); }
+protected:
+    <config.options.className>* burm;
+};
+
+class PlaceholderAnnotation: public JBurgSpecializedAnnotation
+{
+    public:
+    PlaceholderAnnotation(<config.options.className>* burm, <defaults.iNodeClass> node, int arity)
+        :JBurgSpecializedAnnotation(burm, node)
+        {
+        }
+    virtual std::string toString() { return "PlaceholderAnnotation"; }
+    <if (config.wildcardState)>
+    virtual int         getCost(int goalState);
+    <endif>
+};
+
+class <config.options.className><if(interfaceNames)>: public <interfaceNames; separator=", public "><endif>
+{
+private:
+
+	std::stack\<jburg::ReducerIntermediateResult\> __reducedValues;
+
+    jburg::ReducerIntermediateResult popStack(std::stack\<jburg::ReducerIntermediateResult\>& stack) {
+        jburg::ReducerIntermediateResult result = stack.top();
+        stack.pop();
+        return result;
+    }
+
+public:
+
+	<defaults.className>() {
+        initializeJBurgStaticData();
+	}
+
+	~<defaults.className>() {
+	}
+
+<if (nStates)>
+    <config.goalStateNames:nonterminalConstant();separator="\n">
+    static const int nStates = <nStates>;
+<endif>
+
+protected:
+    void initializeJBurgStaticData() {
+        static bool initialized = false;
+
+        if (!initialized) {
+            initialized = true;
+            <if(defaults.debugMode)>
+            jburg::stateName = jburg::initializeStateNames();<endif>
+            <defaults.className>::SubgoalsByRuleInitializerHack init_hack;
+        }
+    }
+>>
+
+placeholderCostDefinition() ::= <<
+int PlaceholderAnnotation::getCost(int goalState) { return goalState == <defaults.className>::<goalStateUndecorated(config.wildcardState)>? 1: MAX_INT_VALUE; }
+>>
+
+
+reduceParameter() ::= << <reduceParameterType(...)> <reduceParameterName(...)> >>
+
+reduceParameterName() ::= <<
+<if(defaults.annotationAccessor)>node<else>p<endif>
+>>
+
+reduceParameterType() ::= <<
+<if(defaults.annotationAccessor)><defaults.iNodeClass><else><"JBurgAnnotation";format="typeReference"><endif>
+>>
+
+reduceSubgoals() ::= <<
+void reduceSubgoals( <reduceParameter(...)>, int rule_num)
+{
+    std::vector\<<"JBurgAnnotation";format="annotationAsTemplateArg">::JBurgSubgoal\>& subgoals = jburg::get_subgoals_by_rule(rule_num);
+    for ( int i = 0; i \< (int)subgoals.size(); i++)
+    {
+        JBurgAnnotation\<<defaults.iNodeClass>\>::JBurgSubgoal sg = subgoals[i];
+
+        if (!sg.isNary()) {
+            reduce ( sg.getNode(<reduceParameterName(...)>), sg.getGoalState());
+        } else {
+
+            // Aggregate the operands of an n-ary operator into a single container.
+            <reduceParameterType(...)> sub_parent = sg.getNode(<reduceParameterName(...)>);
+            int arity = <subParentArity>;
+            jburg::ReducerIntermediateResult variadic_result;
+            for ( int j = sg.getStartIndex(); j \< arity; j++ )
+            {
+                <if(defaults.annotationAccessor)>
+                reduce(<getNthChildI>, sg.getGoalState());
+                <else>
+                reduce(sub_parent-\>getNthChild(j), sg.getGoalState());
+                <endif>
+                variadic_result.variadicResult.push_back(__reducedValues.top());
+                __reducedValues.pop();
+            }
+            __reducedValues.push(variadic_result);
+        }
+    }
+}
+>>
+
+staticDeclarations(maxSize,staticsSuffix,initializers) ::= <<
+    public: static std::vector\<std::vector\<<"JBurgAnnotation";format="annotationAsTemplateArg">::JBurgSubgoal\> \>* subgoals_by_rule<defaults.staticsSuffix>;
+
+    /* Static initializer code for the subgoals lookup table. */
+    public: class SubgoalsByRuleInitializerHack {
+
+        public: SubgoalsByRuleInitializerHack() {
+
+            <defaults.className>::subgoals_by_rule<defaults.staticsSuffix> = new std::vector\<std::vector\<<"JBurgAnnotation";format="annotationAsTemplateArg">::JBurgSubgoal\> \>();
+            <defaults.className>::subgoals_by_rule<defaults.staticsSuffix>-\>resize(<maxSize>);
+            <initializers;separator="\n">
+        }
+    };
+>>
+
+staticDefinitions() ::= <<
+std::vector\<std::vector\<<"JBurgAnnotation";format="annotationAsTemplateArg">::JBurgSubgoal\> \>* <defaults.className>::subgoals_by_rule<defaults.staticsSuffix>;
+namespace jburg {
+    std::vector\<<"JBurgAnnotation";format="annotationAsTemplateArg">::JBurgSubgoal\>& get_subgoals_by_rule(size_t rule_num) {
+        return <defaults.className>::subgoals_by_rule<defaults.staticsSuffix>->at(rule_num);
+    }
+}
+
+>>
+
+subgoalInitializer(ruleNumber,patternNumber,matcher,elements,subgoal) ::= <<
+{
+    std::vector\<int\> rule_<ruleNumber>_pattern_<patternNumber>;
+    <elements;separator="\n">
+    <defaults.className>::subgoals_by_rule<defaults.staticsSuffix>->at(<ruleNumber>).push_back(<"JBurgAnnotation";format="annotationAsTemplateArg">::JBurgSubgoal(<subgoal>,<matcher.isNary>,<matcher.positionInParent>,rule_<ruleNumber>_pattern_<patternNumber>));
+}
+>>
+
+subgoalInitializerElement(ruleNumber,patternNumber,element) ::= <<
+rule_<ruleNumber>_pattern_<patternNumber>.push_back(<element>);
+>>
+
+subgoalVectorDecl(type) ::= <<
+    public: static std::vector\<std::vector\<<type;format="templateArg">::JBurgSubgoal\> \> subgoals_by_rule_<defaults.staticsSuffix>;
+>>
+
+subgoalVectorInitializer(size, contents) ::= <<
+>>
+
+trailer(defaultErrorHandler, problemTree, ntType, ntIterator, getNthChildI, subParentArity, wildcardGoal) ::= <<
+
+    void reduce (<reduceParameter(...)>, <defaults.ntType> goalState )
+    {
+        reduceAntecedent(<reduceParameterName(...)>, goalState);
+    }
+
+	void reduceAntecedent(<reduceParameter(...)>, <defaults.ntType> goalState)
+	{
+		int iRule = -1;
+
+        <explicitAnnotation(...)>
+
+		<if (config.wildcardState)>
+        if (goalState == <goalStateUndecorated(config.wildcardState)>) {
+            jburg::ReducerIntermediateResult result;
+            <if(defaults.annotationAccessor)>
+            result.<defaults.iNodeClass;format="intermediateType"> = <reduceParameterName(...)>;
+            <else>
+            result.<defaults.iNodeClass;format="intermediateType"> = <reduceParameterName(...)>->getNode();
+            <endif>
+            __reducedValues.push(result);
+            return;
+        }
+        else<endif> if ( goalState \> 0 ) {
+			iRule = p-\>getRule(goalState);
+		} else {
+			//  Find the minimum-cost path.
+			int minCost = MAX_INT_VALUE;
+			for (int i = 0; i \<= nStates ; ++i ) {
+				if ( p-\>getCost(i) \< minCost ) {
+					iRule = p-\>getRule(i);
+					minCost = p-\>getCost(i);
+					goalState = i;
+				}
+			}
+		}
+
+		if ( iRule \> 0 ) {
+			reduceSubgoals(<reduceParameterName(...)>, iRule);
+			dispatchAction (<reduceParameterName(...)>, iRule );
+		} else {
+            <if(defaultErrorHandler)>
+            <defaultErrorHandler>
+            <else>
+			std::stringstream s;
+			s \<\< "Unable to find a rule to process ";
+            <if (defaults.annotationAccessor)>
+			s \<\< node;
+            <else>
+			s \<\< p-\>getNode();
+            <endif>
+			s \<\< " (" \<\< p-\>getOperator() \<\< ") {" \<\< goalState \<\< "}";
+			throw std::runtime_error(s.str());
+            <endif>
+		}
+	}
+
+    <reduceSubgoals(...)>
+
+public:
+
+	void burm ( <defaults.iNodeClass> root )
+	{		burm(root,0);	}
+
+	void burm ( <defaults.iNodeClass> root, int goal_state )
+	{
+        <if(defaults.annotationAccessor)>
+		label(root);
+		reduce (root, goal_state);
+        <else>
+		JBurgAnnotation\<<defaults.iNodeClass> \>* annotatedTree = label(root);
+		reduce (annotatedTree, goal_state);
+		delete annotatedTree;
+        <endif>
+	}
+
+    <config.returnTypes:typedReturnMethod(...)>
+>>
+
+typedReturnMethod(returnType) ::= <<
+	<returnType> get<returnType;format="intermediateType">()
+    {
+		return __reducedValues.top().<returnType;format="intermediateType">;
+	}
+
+>>
+
+variadicWrapper(returnType) ::= <<
+class variadic_<returnType;format="templateArg">Wrapper
+{
+public:
+    variadic_<returnType;format="templateArg">Wrapper(ReducerIntermediateResult rawResult):
+        rawResult(rawResult.variadicResult)
+    {
+    }
+
+    <returnType> at(size_t idx)
+    {
+        return rawResult.at(idx).<returnType;format="intermediateType">;
+    }
+
+    size_t size()
+    {
+        return rawResult.size();
+    }
+private:
+    std::vector\<ReducerIntermediateResult\> rawResult;
+};
+
+>>

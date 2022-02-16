@@ -1,0 +1,283 @@
+<h2>Writing a JBurg Specification</h2>
+
+<h3>Example</h3>
+<a href="http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/jburg/jburg/test/tl1/reducer/tl1.jburg">tl1.jburg</a>
+is a simple BURG specification with many comments.
+Take a moment to study it; the 1.1.1.1 branch is the simplest.
+
+<h3>General File Layout</h3>
+<h4>File Naming Conventions</h4>
+<p>JBurg specifications commonly take the file extension .jburg, e.g., <code>tl1.jburg</code>.
+
+<h4>Elements of a JBurg Specification</h4>
+A JBurg specification is made up of 
+	<a href="#comments"><i>comments</i></a>,
+	a <a href="#directives_section"><i>directives</i></a> section, 
+	a <a href="#rules_section"><i>rules</i></a> section,
+	and a <a href="#cost_functions_section"><i>cost functions</i></a> section.
+
+<p>The sections must be supplied in order,
+but within a section, the directives, rules, and cost functions may be written in any order.
+Comments may appear anywhere in the specification.
+
+<hr>
+<a name="comments"></a>
+<h3>Comments</h3>
+JBurg specifications may contain <font color="green">// to-end-of-line style comments</font><br>
+and <font color="green">/C-style comments. */</font>
+
+
+<hr>
+
+<a name="directives_section"></a>
+<h3>JBurg Directives</h3>
+<h4>Required Directives</h4>
+<p>The required directives supply the Java class types of the BURM's input and output.
+<ul>
+	<p><li> <b>INodeType</b> Directive
+	   <table border="2" cellspacing="5" cellpadding="2">
+	   <tr><th>EBNF</th><td><code>"INodeType" inode_type:multipart_identifier SEMI</code></td></tr>
+	   <tr><th>Usage</th>
+	   <td>
+	   	<ul>
+			<li>One INodeType directive may be specified.
+			If multiple INodeType directives are specified, the last one wins.
+			<li>The INodeType directive specifies the Java class of the input tree.
+		</ul>
+	   </td></tr>
+	   <tr><th valign="top">Example</th><td><code><pre>INodeType TestINode;</pre></code></td>
+	   </table>
+	   
+	   <a name="returnType_directive">
+	<p><li> <b>ReturnType</b> Directive
+	   <table border="2" cellspacing="5" cellpadding="2">
+	   <tr><th>EBNF</th><td><code>"ReturnType" return_type:multipart_identifier SEMI</code></td></tr>
+	   <tr><th>Usage</th>
+	   <td>
+	   	<ul>
+			<li>One <b>ReturnType</b> directive per specification.  Last one wins.
+			<li>The <b>ReturnType</b> directive specifies the type of objects that
+			JBurg expects to be returned by reductions' action code.
+		</ul>
+	   </td></tr>
+	   <tr><th valign="top">Example directive</th><td><code>ReturnType InstructionList;</code></td>
+	   <tr><th valign="top">Example action</th><td><code>return new InstructionList ( new LDC ( cp.addString( "Hello world" ) ) );</code></td>
+	   </table>
+</ul>
+	   
+<a name="optional_directives">
+<h3>Optional Directives</h3>
+
+	<p><li> <b>BURMProperty</b> Directive
+	   <table border="2" cellspacing="5" cellpadding="2">
+	   <tr><th>EBNF</th><td><code>"BURMProperty" property_type:multipart_identifier property_name:IDENTIFIER SEMI</code></td></tr>
+	   <tr><th valign="top">Usage</th>
+	   <td>
+	   	<ul>
+			<li>Optional.
+			<li>As many <b>BURMProperty</b> directives may be specified as necessary.
+			<li>A <b>BURMProperty</b> directive inserts a property into the generated BURM.
+			A property consists of:
+			<ul>
+				<li>A private field of the specified type.
+				<li>A get<i>Property_name</i>() method.
+				The property name specified is lower-cased with a leading upper-case character, 
+				with the literal "get" prepended to form the method name.
+				<li>A set<i>Property_name</i>() method.
+				The property name specified is lower-cased with a leading upper-case character, 
+				with the literal "set" prepended to form the method name.
+			</ul>
+		</ul>
+	   </td></tr>
+
+	   		<tr><th>Example JBurg directive</th><td><code>BURMProperty org.apache.bcel.generic.ClassGen classGen;</code></td></tr>
+			<tr><th>Example code that sets the property</th>
+			<td><code><pre>
+ClassGen classGen = 
+    new ClassGen ( className, superclassName, inputName, ACC_PUBLIC | ACC_FINAL | ACC_SUPER, null );
+MyReducer emitter = new MyReducer();
+emitter.setClassgen ( classGen );</pre></code></td>
+			</tr>
+	
+	   </table>
+	   
+	<p><li><b>Header</b> Directive 
+	<table border="2" cellspacing="5" cellpadding="2">
+		<tr><th>EBNF</th><td><code>"header" <i>{ Java code }</i></code></td></tr>
+		<tr><th>Usage</th>
+			<td>
+				<ul>
+					<li>Optional, but usually present.
+					<li>One per specification; if multiple
+					    <b>header</b> directives are present, the last one wins.
+					<li>The <b>header</b> directive supplies a block of Java
+					code that is copied verbatim (including braces) into the
+					generated BURM's Java source file, before the <code>class</code>
+					definition.
+					This allows the BURG specification to pass in <code>import</code>
+					directives, etc.
+				</ul>
+			</td></tr>
+			<tr><th>See also</th>
+			<td>
+				<ul>
+					<li><a href="#package_decl">Package</a> directive
+				</ul>
+			</td></tr>
+		<tr><th valign="top">Example</th><td><code><pre>
+header
+{
+/**
+ This code generator recognizes assignment statements, simple expressions, and function calls.
+ */
+
+/* We're using the BCEL bytcode library in this example. */
+import org.apache.bcel.generic.*;
+
+}
+    </pre></code></td>
+	</table>
+	
+	<a name="implements_directive"></a>
+<p><li> <b>Implements</b> Directive
+	<table border="2" cellspacing="5" cellpadding="2">
+	   <tr><th>EBNF</th><td><code>"implements" implements_interface_name:multipart_identifier SEMI</code></td></tr>
+	   	<tr><th>Usage</th>
+		<td>
+			<ul>
+				<li>As many <b>implements</b> directives may be specified as necessary.
+				<li>The <b>implements</b> directive specifies an interface that the 
+				generated BURM is to implement.
+				This is often necessary to give the BURM multiple interfaces that
+				contain the symbolic names of the INodes' operators.
+			</ul>
+			</td></tr>
+	   <tr><th valign="top">Example</th><td><code><pre>
+implements  MyParserConstants;
+implements  MyNodeTypes;
+implements  org.apache.bcel.Constants;
+</pre></code></td>
+	</table>
+	<a name="inode_declaration">
+
+	
+	<p><li> <b>Package</b> Directive
+	   <table border="2" cellspacing="5" cellpadding="2">
+	   <tr><th>EBNF</th><td><code>"package" package_name:multipart_identifier SEMI</code></td></tr>
+	   <tr><th>Usage</th><td>
+	   	<ul>
+			<li>One <b>Package</b> directive per specification; last one wins.
+			<li>The <b>Package</b> directive specifies the name of the package (if any)
+			that is to contain the generated BURM.
+		</ul>
+	   </td></tr>
+	   <tr><th>See also</th>
+	   	<td>
+			<a href="#header_directive">Header</a> directive.
+			The package name can also be coded into the header block; recommended practice
+			is to use the <b>Package</b> directive, in case future versions of JBurg
+			learn specialized processing procedures for a specific package.
+		</td></tr>
+	   <tr><th valign="top">Example</th><td><code><pre>package jburg.test.tl1.reducer;</pre></code></td>
+	   </table>
+</ul>
+<hr>
+
+<a name="rules_section"></a>
+<h3>Rules Section</h3>
+
+ <p>Each rule produces a <i>goal</i>.  A goal is similar to a reduction
+  in a parser generator, in reverse: a successful goal replaces the input AST with 
+  an output object.  
+  In the case of a code generator, the output is usually a code fragment, e.g., a BCEL InstructionList or an ABC InstructionList.
+ 
+  <p>Each rule is also associated with a <i>cost</i>.  In most cases, a cost is
+  a simple integer; it can also be computed via a function, with the AST as a parameter.
+ 
+  <ul>
+  <li>Pattern-Matching Rules
+  	<table border="2" cellspacing="5" cellpadding="2">
+		<tr><th>EBNF</th><td><code>IDENTIFIER EQUALS operator_specification cost_specification <i>{ Java code }</i></code></td></tr>
+		<tr><th>Usage</th><td>This rule reduces an AST node of a particular kind (NODE_KIND), 
+      with either no, one, or two subgoals.  
+      The subgoals are similar to non-terminals in a parse generator. </td></tr>
+<tr><th>Example 1</th><td><code>int = PLUS(int i1, int i2): 1 { /* code to add two int values */ }</code>
+	<p>This pattern-matching rule produces an int, given a PLUS node 
+      with two children that can both satisfy the "int" goal.</td></tr>
+	  </table>
+  
+  <p><li>Terminal Rules
+      <table border="2" cellspacing="5" cellpadding="2">
+		<tr><th>EBNF</th><td><code>IDENTIFIER EQUALS IDENTIFER LPAREN VOID RPAREN <i>{ Java code }</i></code></td></tr>
+      <tr><th>Usage</th><td>These are trivial pattern rules, where the pattern consists solely of the leaf.</td></tr>
+      <tr><th>Example</th><td>
+      <code>int = INTEGER_LITERAL(void) { code to implement integer literal }</code>
+	  </td></tr>
+	  </table>
+  <p><li>Simple Transformation Rules
+  <table border="2" cellspacing="5" cellpadding="2">
+		<tr><th>EBNF</th><td><code>IDENTIFIER EQUALS IDENTIFIER SEMI</code></td></tr>
+      <tr><th>Usage</th><td>Transformation rules allow the code generator to use one goal to satisfy another goal.</td></tr>
+      <tr><th>Example</th><td>
+      <code>numeric_value = int;</code></td>
+	  </tr>
+	  <tr><th></th><td>
+      This transformation tells the BURM that the "int" goal can satisfy the "numeric_value" goal.
+      Since this is a simple transformation, the cost will be carried over from the int goal.
+      </td></tr>
+	  </table>
+  <p><li>Complex Transformation Rules
+	  <table border="2" cellspacing="5" cellpadding="2">
+		<tr><th>EBNF</th><td><code>IDENTIFIER EQUALS IDENTIFIER cost_specification <i>{ Java code }</i></code></td></tr>
+		<tr><th>Usage</th><td>
+      <p>This transformation rule also allows the code generator to use one
+      goal to satisfy another, but specifies some additional processing that
+      accomplishes the transformation.  The cost spec should only consider
+      the cost of the transformation code; the code generator will add in the
+      cost of the original node.
+	  </td></tr>
+	  <tr><th>Example</th><td>
+      <code>int = numeric_value : 1 { code to convert an arbitrary number to an int}</code>
+	  </td></tr>
+      </table>
+  </ul>
+
+  <hr>
+  <a name="cost_functions_section"><h3>Cost Functions Section</h3></a>
+	<table border="2" cellspacing="5" cellpadding="2">
+		<tr><th>EBNF</th><td><code>IDENTIFIER LPAREN RPAREN <i>{ Java code }</i> </code></td></tr>
+		<tr><th>Usage</th>
+		<td>
+  <p>Cost functions are Java code that returns an int value.
+  The value is used to compute the cost of a particular candidate reduction.
+  The BURM searches for the lowest total cost sequence of reductions to rewrite
+  an input subtree, so low values mean "good cost," higher values mean "less desirable."
+  <p>The cost function has a single implicit parameter, <b><code>p</code></b>, the input
+  node that is to be analyzed.
+  </td></tr>
+  
+  <tr><th>Example</th>
+  <td><pre><code>
+/**
+ *  @return "true" if the given node's int value is within
+ *      the range representable in a byte.
+ */
+canBIPUSH()
+{
+    return (p.intValue() < 256)? 1: 1000000;
+}</code></pre></td></tr>
+</table>
+
+<!-- Piwik -->
+<script type="text/javascript">
+var pkBaseURL = (("https:" == document.location.protocol) ? "https://sourceforge.net/apps/piwik/jburg/" : "http://sourceforge.net/apps/piwik/jburg/");
+document.write(unescape("%3Cscript src='" + pkBaseURL + "piwik.js' type='text/javascript'%3E%3C/script%3E"));
+</script><script type="text/javascript">
+try {
+var piwikTracker = Piwik.getTracker(pkBaseURL + "piwik.php", 1);
+piwikTracker.trackPageView();
+piwikTracker.enableLinkTracking();
+} catch( err ) {}
+</script><noscript><p><img src="http://sourceforge.net/apps/piwik/jburg/piwik.php?idsite=1" style="border:0" alt=""/></p></noscript>
+<!-- End Piwik Tag -->
+

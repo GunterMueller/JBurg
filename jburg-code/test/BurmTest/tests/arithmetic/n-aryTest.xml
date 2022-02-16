@@ -1,0 +1,18 @@
+<BurmTest burm="JBurgNaryEmitter" expectedResult="6">
+
+    <Opcodes class="burmTest.ArithmeticOpcodes"/>
+    <grammar file="tests/arithmetic/n-ary.jbg"/>
+
+    <Node opcode="ADD">
+        <Node opcode="ADD">
+            <Node opcode="INT" userObject="1"/>
+        </Node>
+        <Node opcode="INT" userObject="0"/>
+        <Node opcode="PAREN">
+            <Node opcode="INT" userObject="3"/>
+            <Node opcode="INT" userObject="2"/>
+        </Node>
+        <Node opcode="PAREN"/>
+    </Node>
+
+</BurmTest>

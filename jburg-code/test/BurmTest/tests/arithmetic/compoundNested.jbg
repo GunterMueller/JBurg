@@ -1,0 +1,31 @@
+@include "IntegerArithmetic.jbg"
+
+expression = PAREN(PAREN(ADD(expression l, expression r)), PAREN ( expression tail+)):1
+{
+    int result = l+r;
+
+    for ( Integer i: (Vector<Integer>)tail )
+        result += i;
+
+    return result;
+
+}
+
+expression = PAREN(PAREN(ADD(expression l, expression r)), expression tail+):1
+{
+    int result = l+r;
+
+    for ( Integer i: (Vector<Integer>)tail )
+        result += i;
+
+    return result;
+
+}
+
+expression = PAREN(ADD(expression l, expression r)):1
+{
+    int result = l+r;
+
+    return result;
+
+}

@@ -1,0 +1,55 @@
+<BurmTest burm="PerformanceTestReducer" expectedValue="3" timeTest="true">
+
+    <grammar file="tests/performance/PerformanceTest.jbg"/>
+
+    <javaSupportFiles srcdir="tests/performance" includes="PerformanceOpcodes.java"/>
+    <Opcodes class="PerformanceOpcodes"/>
+
+    <Node opcode="BLOCK">
+      <Node opcode="ASSIGN">
+        <Node opcode="IDENTIFIER" userObject="expected"/>
+        <Node opcode="INT" userObject="415"/>
+      </Node>
+      <Node opcode="ASSIGN">
+        <Node opcode="IDENTIFIER" userObject="actual"/>
+        <Node opcode="PAREN">
+          <Node opcode="MULTIPLY">
+            <Node opcode="INT" userObject="5"/>
+            <Node opcode="ADD">
+              <Node opcode="PAREN">
+                <Node opcode="MULTIPLY">
+                  <Node opcode="MULTIPLY">
+                    <Node opcode="MULTIPLY">
+                      <Node opcode="INT" userObject="2"/>
+                      <Node opcode="INT" userObject="3"/>
+                    </Node>
+                    <Node opcode="INT" userObject="3"/>
+                  </Node>
+                  <Node opcode="INT" userObject="3"/>
+                </Node>
+              </Node>
+              <Node opcode="PAREN">
+                <Node opcode="ADD">
+                  <Node opcode="PAREN">
+                    <Node opcode="INT" userObject="19"/>
+                  </Node>
+                  <Node opcode="PAREN">
+                    <Node opcode="MULTIPLY">
+                      <Node opcode="INT" userObject="2"/>
+                      <Node opcode="INT" userObject="5"/>
+                    </Node>
+                  </Node>
+                </Node>
+              </Node>
+            </Node>
+          </Node>
+        </Node>
+      </Node>
+      <Node opcode="PRINT">
+        <Node opcode="IDENTIFIER" userObject="expected"/>
+      </Node>
+      <Node opcode="PRINT">
+        <Node opcode="IDENTIFIER" userObject="actual"/>
+      </Node>
+    </Node>
+</BurmTest>

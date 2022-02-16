@@ -1,0 +1,18 @@
+<!-- 
+    Note this test expects a different result than its nodes imply;
+    this is because it's testing the number of times a cost function
+    was called.
+-->
+<BurmTest burm="VolatileCosts" expectedResult="4">
+
+    <Opcodes class="burmTest.ArithmeticOpcodes"/>
+    <grammar file="tests/arithmetic/VolatileCosts.jbg"/>
+
+    <Node opcode="PAREN">
+        <Node opcode="ADD">
+            <Node opcode="INT" userObject="1"/>
+            <Node opcode="INT" userObject="1"/>
+        </Node>
+    </Node>
+
+</BurmTest>

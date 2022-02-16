@@ -1,0 +1,13 @@
+<BurmTest burm="JBurgCppLabelTest" expectedResult="3">
+
+    <grammar file="tests/cpp/LabelTest.jbg"/>
+    <language value="cpp"/>
+    <cppsource path="tests/cpp/LabelTest.cpp"/>
+    <executable path="gensrc/CppLabelTest"/>
+
+    <Node opcode="ADD">
+        <Node opcode="INT" userObject="1"/>
+        <Node opcode="INT" userObject="2"/>
+    </Node>
+
+</BurmTest>

@@ -1,0 +1,306 @@
+<project name="JBurg" default="cleanBuildAndTest" basedir=".">
+
+    <target name="init">
+        <!-- Load the properties from 
+           $HOME/ant.properties. 
+           Please do not change any properties here. 
+        -->
+        <property file="${user.home}/ant.properties" />
+        <property file="build.properties" />
+    
+        <property name="distro.version" value="Set in build.properties"/>
+
+        <!-- Intra-project directory configuration -->
+        <property name="src.dir" value="./src" />
+        <property name="classes.dir" value="./classes" />
+        <property name="lib.dir" value="./lib" />
+        <property name="jburg.dir" value="./src/java" />
+        <property name="junit.log.dir" value="./log" />
+
+        <!-- Target settings -->
+        <property name="jar.file" value="jburg.jar" />
+        <property name="debug.symbols" value="yes"/>
+        
+        <!-- Making JBurg requires a bootstrap version of JBurg. -->
+        <property name="known_good.burg" value="./lib/jburg-2.-.jar"/>
+        <property name="experimental.burg" value="./lib/jburg.jar"/>
+
+        <property name="bootstrap.burg" value="${known_good.burg}"/>
+
+        <!-- Grammar files, parser and emitter -->
+        <property name="jburg.grammar.file" value="./src/grammars/jburg.g" />
+        <property name="jburg.burg.file" value="./src/grammars/JBurgGenerator.jbg" />
+
+        <!-- String templates to use -->
+        <property name="templates.home" value="./src"/>
+
+        <!--  Generated sources -->
+        <property name="gensrc.dir" value="./gensrc" />
+        <property name="jburg.version.dir" value="${gensrc.dir}/jburg/version" />
+        <property name="jburg.parser.dir" value="${gensrc.dir}/jburg/parser" />
+        <property name="jburg.emitter.dir" value="${gensrc.dir}/jburg/burg" />
+
+        <property name="jburg.main.class" value="jburg.burg.JBurgMain" />
+
+        <!--  Third-party tools. -->
+
+        <property name="antlr.jar"    value="${user.home}/tools/antlr.jar"/>
+        <property name="cpp.compiler" value="g++"/>
+
+        <!--
+            Defines a <jburg input="..." output="..."> macro
+            for using JBurg to generate a Java-based BURM from a .jbg file.
+        -->
+        <macrodef name="jburg">
+            <attribute name="input"/>
+            <attribute name="output"/>
+            <sequential>
+                <dirname property="jburg.dirname.@{input}" file="@{input}"/>
+                <dirname property="jburg.dirname.@{output}" file="@{output}"/>
+                <basename property="jburg.basename.@{output}" file="@{output}"/>
+                <mkdir dir="${jburg.dirname.@{output}}"/>
+                <java classname="${jburg.main.class}"
+                      fork="true" failonerror="true" >
+                    <arg value="@{input}"/>
+                    <arg value="-outputdir"/>
+                    <arg value="${jburg.dirname.@{output}}"/>
+                    <arg value="-outputfile"/>
+                    <arg value="${jburg.basename.@{output}}"/>
+                    <arg value="-debug"/>
+                    <classpath>
+                        <pathelement path="${antlr.jar}"/>
+                        <pathelement path="${known_good.burg}"/>
+                    </classpath>
+                </java>
+            </sequential>
+        </macrodef>
+        
+    </target>
+
+	<!-- Compile JBurg -->
+	<target name="compilejburg" depends="init"
+                        description="Compile the Jburg sources only">
+		<mkdir dir="${jburg.parser.dir}" />
+		<mkdir dir="${jburg.emitter.dir}" />
+		<mkdir dir="${jburg.version.dir}" />
+		<mkdir dir="${classes.dir}" />
+
+		<echo message="Generating JBurg Grammar from ANTLR."/>
+
+		<antlr target="${jburg.grammar.file}"
+				outputdirectory="${jburg.parser.dir}">
+				<classpath>
+                    <pathelement location="${antlr.jar}"/>
+				</classpath>
+		</antlr>
+
+		<echo message="Setting JBurg version ${distro.version}."/>
+		<echo file="${jburg.version.dir}/JBurgVersion.java">
+		package jburg.version;
+		public interface JBurgVersion {
+		    public static final String version="${distro.version}";
+		}
+		</echo>
+
+		<echo message="Generating JBurg tree parsers."/>
+		<jburg input="${jburg.burg.file}" output="${jburg.emitter.dir}/JBurgPatternEncoder.java"/>
+		<jburg input="src/grammars/expressions.jbg" output="${jburg.emitter.dir}/ExpressionParser.java"/>
+            
+		<javac 
+			debug="${debug.symbols}" 
+			destdir="${classes.dir}" includes="**/*.java"
+			>
+			<src path="${jburg.dir}"/>
+			<src path="${gensrc.dir}"/>
+			<classpath>
+				<pathelement location="${antlr.jar}"/>
+			</classpath>
+		</javac>
+	</target>
+
+	<!--  Regenerate the pattern-encoding BURM source; 
+		used to diagnose failures in the new BURG's
+		ability to regenerate itself.
+	-->
+	<target name="regenerate_pattern_matcher" depends="init">
+			<java classname="${jburg.main.class}" fork="yes" failonerror="yes" >
+			<arg value="${jburg.burg.file}" />
+			<arg value="-outputdir"/>                        
+			<arg value="${jburg.emitter.dir}" />
+			<arg value="-outputfile"/>                        
+			<arg value="JBurgPatternEncoder.java"/>
+			<!--  Uncomment to build a debug reducer. -->
+			<!-- arg value="-g"/ -->
+			<classpath>
+				<pathelement path="${experimental.burg}"/>
+				<pathelement location="${antlr.jar"/>
+			</classpath>
+		</java>
+	</target>
+
+	<!-- Make the JBurg library jar file. -->
+	<target name="jburg.jar" depends="compilejburg">
+            <mkdir dir="${lib.dir}" />        
+            <jar jarfile="${lib.dir}/${jar.file}">
+                <fileset dir="${classes.dir}"/>
+                <fileset dir="${templates.home}" includes="**/*.stg"/>
+                <manifest>
+                    <attribute name="Main-Class" value="jburg.burg.JBurgMain"/>
+                    <attribute name="Implementation-Version" value="${distro.version}"/>
+                </manifest>
+            
+            </jar>
+	</target>
+
+    <target name="jar" depends="jburg.jar"/>
+
+    <!-- Create the ErrorAnalyzer.jar debugger UI -->
+    <target name="ErrorAnalyzer.jar" depends="init">
+        <mkdir dir="extras/ErrorAnalyzer/classes"/>
+        <javac 
+			debug="${debug.symbols}" 
+			srcdir="extras/ErrorAnalyzer/src"
+            includes="**/*.java"
+			destdir="extras/ErrorAnalyzer/classes" 
+        >
+		</javac>
+
+        <jar 
+            jarfile="${lib.dir}/ErrorAnalyzer.jar" 
+            basedir="extras/ErrorAnalyzer/classes">
+            <manifest>
+				<attribute name="Main-Class" value="jburg.debugging.ErrorAnalyzer"/>
+			</manifest>
+
+        </jar>
+    </target>
+
+    <!-- Build the ExtractReducer static analysis tool -->
+    <target name="ExtractReducer.jar" depends="init">
+        <mkdir dir="extras/jburg/classes"/>
+        <javac 
+			debug="${debug.symbols}" 
+			srcdir="extras/jburg"
+            includes="**/*.java" 
+			destdir="extras/jburg/classes" 
+        >				
+            <classpath>
+                <pathelement location="${antlr.jar}"/>
+                <pathelement location="${classes.dir}"/>
+            </classpath>
+		</javac>
+
+        <jar 
+            jarfile="${lib.dir}/ExtractReducer.jar" 
+            basedir="extras/jburg/classes">
+            <manifest>
+				<attribute name="Main-Class" value="jburg.ExtractReducer"/>
+                <attribute name="Class-Path" value="${antlr.jar} jburg.jar"/>
+			</manifest>
+
+        </jar>
+    </target>
+
+
+	<!-- Make a distribution. -->
+	<target name="distro" depends="jburg.jar, clean">
+		<echo message="Creating distribution, version ${distro.version}"/>
+		<tar 
+			destfile="jburg-${distro.version}.tar.gz"
+			basedir="."
+			compression="gzip"
+			>
+				<include name="src/**"/>
+				<include name="docs/**"/>
+				<include name="extras/**"/>
+				<include name="test/**"/>
+                <exclude name="test/BurmTest/gensrc/**"/>
+                <exclude name="test/BurmTest/classes/**"/>
+				<include name="lib/jburg.jar"/>
+				<include name="lib/jburg-1.10.1.jar"/>
+				<include name="build.xml"/>
+				<include name="AUTHORS"/>
+				<include name="INSTALL"/>
+				<include name="LICENSE"/>
+				<include name="README"/>
+		</tar>
+	</target>
+
+    <!--  Build the ErrorAnalyzer dump analyzer. -->
+    <target name="ErrorAnalyzer">
+        <mkdir dir="classes" />        
+		<javac srcdir="extras/ErrorAnalyzer" destdir="classes" includes="**/*.java"/>
+	</target>
+
+	<!-- Clean up all directories -->
+	<target name="clean" depends="init">
+		<!-- Remove VIM backup files.  -->
+		<delete>
+			<fileset dir="${basedir}" includes="**/*.*~"
+				defaultexcludes="no"/>
+		</delete>
+            
+		<delete dir="${classes.dir}" />            
+		<delete dir="${jburg.parser.dir}" /> 
+		<delete dir="${jburg.version.dir}" /> 
+		<delete dir="${jburg.emitter.dir}" /> 
+		<delete dir="extras/ErrorAnalyzer/classes" />
+		<!-- Can't delete lib.dir, since we may be bootstrapping ourselves. -->
+        <!-- Delete test files. -->
+        <ant dir="test/BurmTest" target="clean"/>
+        <ant dir="test/patternmatcher" target="clean"/>
+	</target>
+
+	<!-- Create javadoc. -->
+    <target name="javadoc" depends="init">
+		<mkdir dir="docs/api"/>
+
+		<javadoc 
+           destdir="docs/api"
+           author="true"
+           version="true"
+           use="true"
+           package="true"
+           windowtitle="JBurg API">
+
+			<fileset dir="src/compiler">
+				<include name="jburg/**"/>
+			</fileset>
+
+			<fileset dir="src/java">
+				<include name="jburg/**"/>
+				<exclude name="jburg/parser/JBurgTokenTypes.txt"/>
+			</fileset>
+
+			<classpath>
+				<pathelement location="${bcel.home}/${bcel.version}.jar"/>
+				<pathelement location="${antlr.jar"/>
+			</classpath>
+
+		</javadoc>
+
+	</target>
+
+    <!-- Clean, rebuild, and test. -->
+    <target name="cleanBuildAndTest" description="Clean build, run MAT tests" depends="clean,jburg.jar">
+        <ant dir="test/BurmTest" target="MAT"/>
+        <ant dir="test/patternmatcher" target="MAT"/>
+	</target>
+
+    <!-- Build JBurg and test the pattern matcher -->
+    <target name="ppm" depends="jar">
+        <ant dir="test/patternmatcher" target="test"/>
+    </target>
+
+    <!--  Programmatically set the message output level to "quiet" -->
+    <target name="quiet">
+        <script language="javascript">
+            var logger = project.getBuildListeners().firstElement();
+            var verboseMode = project.getProperty( "verboseFlag" )
+            if ( ! "1".equals( verboseMode ) )
+                logger.setMessageOutputLevel( org.apache.tools.ant.Project.MSG_WARN );
+        </script>
+    </target>
+
+    
+</project>

@@ -1,0 +1,36 @@
+<h2>JBurg References</h2>
+<ul>
+	<a name="iburg">
+	<li><a href="http://www.cs.princeton.edu/software/iburg/iburg.pdf">Engineering a Simple, Efficient Code Generator Generator</a>
+	<br>Christopher W. Fraser, David R. Hanson, and Todd A. Proebsting
+	<br>This reference describes <code>iburg</code>, a BURG that generates back ends for the 
+	<a href="http://www.cs.princeton.edu/software/lcc/">lcc</a> compiler.
+	JBurg's pattern-matching facilities were based on a close reading of this paper.
+	<a name="wburg">
+	<p><li><a href="http://www.research.microsoft.com/copyright/accept.asp?path=/~toddpro/papers/cc96.ps&pub=15">One-Pass, Optimal Tree Parsing - With Or Without Trees</a>
+	<br>Todd A. Proebsting and Benjamin R. Whaley
+	<br>An extended discussion of BURS systems that use the
+	"Principle of Non-Interference" to label and reduce subtrees
+	in a single pass.
+	<p><li><p><a href="http://www.springerlink.com/index/5951UA7VUTH1LP91.pdf">A Study on Generating an Efficient Bottom-up Tree Rewrite Machine for JBurg</a>
+	<br>Dr. KyungWoo Kang
+	<br>Dr. Kang proposes an analytical technique which would allow JBurg to do as much dynamic programming as possible at compiler-compile time.
+	<br>Further investigation and implementation is scheduled for JBurg 2.0.
+	<p><li><p><a href="http://mat.gsia.cmu.edu/classes/dynamic/dynamic.html">A Tutorial on Dynamic Programming</a>
+	<br>Michael A. Trick
+	<br>A good introduction to dynamic programming.
+</ul>
+
+<!-- Piwik -->
+<script type="text/javascript">
+var pkBaseURL = (("https:" == document.location.protocol) ? "https://sourceforge.net/apps/piwik/jburg/" : "http://sourceforge.net/apps/piwik/jburg/");
+document.write(unescape("%3Cscript src='" + pkBaseURL + "piwik.js' type='text/javascript'%3E%3C/script%3E"));
+</script><script type="text/javascript">
+try {
+var piwikTracker = Piwik.getTracker(pkBaseURL + "piwik.php", 1);
+piwikTracker.trackPageView();
+piwikTracker.enableLinkTracking();
+} catch( err ) {}
+</script><noscript><p><img src="http://sourceforge.net/apps/piwik/jburg/piwik.php?idsite=1" style="border:0" alt=""/></p></noscript>
+<!-- End Piwik Tag -->
+

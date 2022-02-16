@@ -1,0 +1,82 @@
+header {
+#include <iostream>
+#include <antlr/AST.hpp>
+#include "CalcParserTokenTypes.hpp"
+}
+
+Language cpp;
+
+implements CalcParserTokenTypes;
+
+INodeType antlr::AST;
+
+{
+public:
+	int regnum;
+}
+
+ReturnType int;
+ReturnType identifier = std::string*;
+
+stmt = EQUALS(addr a, reg r) : 1
+{
+	std::cout << "\tsw\tr" << r << ", (r" << a << ")" << std::endl;
+	return 0;
+}
+
+stmt = DECL(identifier id) : 0
+{
+	std::cout << "\t.comm\t" << *id << ", 4" << std::endl;
+	return 0;
+}
+
+reg = PLUS(reg r1, reg r2) : 1
+{
+	int r = regnum++;
+	std::cout << "\tadd\tr" << r << ", r" << r1 << ", r" << r2 << std::endl;
+	return r;
+}
+
+reg = MINUS(reg r1, reg r2) : 1
+{
+	int r = regnum++;
+	std::cout << "\tsub\tr" << r << ", r" << r1 << ", r" << r2 << std::endl;
+	return r;
+}
+
+reg = constant : 1
+{
+	int r = regnum++;
+	// hmmm, I don't seem to have any use for 'constant' directly...
+	std::cout << "\tla\tr" << r << ", " << constant << std::endl;
+	return r;
+}
+
+// MISSING RULE TO HANDLE ZERO CONSTANT SPECIAL CASE
+reg = ZERO(void) : 0
+{
+	return 0;
+}
+
+reg = IND(addr a) : 1
+{
+	int r = regnum++;
+	std::cout << "\tlw\tr" << r << ", (r" << a << ")" << std::endl;
+	return r;
+}
+
+/** returns nothing (i.e., no register), just names INT as a constant */
+constant = INT(void) : 0
+{
+	return atoi(__p->getText().c_str());
+}
+
+/** returns the text of the id */
+identifier = ID(void) : 0 { return new std::string ( __p->getText().c_str() ); }
+
+addr = ADDR(identifier id) : 1
+{
+	int r = regnum++;
+	std::cout << "\tla\tr" << r << ", " << *id << std::endl;
+	return r;
+}

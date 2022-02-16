@@ -1,0 +1,15 @@
+<BurmTest burm="CompoundNaryLast" expectedResult="12">
+
+    <Opcodes class="burmTest.ArithmeticOpcodes"/>
+    <grammar file="tests/arithmetic/compoundNaryLast.jbg"/>
+    
+
+    <Node opcode="ADD">
+        <Node opcode="INT" userObject="5"/>
+        <Node opcode="INT" userObject="5"/>
+        <Node opcode="PAREN">
+            <Node opcode="INT" userObject="2"/>
+        </Node>
+    </Node>
+
+</BurmTest>

@@ -1,0 +1,384 @@
+/*
+ * C++ code fragments used by JBurg's C++ emitter.
+ */
+group EmitCpp;
+
+actionRoutineParameter(paramType,paramName,initialValue) ::= <<
+
+<paramType> <paramName>(popStack(__reducedValues).<paramType;format="intermediateType">);
+>>
+
+actionRoutineParameterVariadic(paramType,paramName,initialValue) ::= <<
+
+<paramType> <paramName>(popStack(__reducedValues));
+>>
+
+add(lhs,rhs) ::= <<
+<lhs> + <rhs>
+>>
+
+adHocDirectives(directives) ::= <<
+<directives;separator="\n">
+>>
+
+arrayAccess(stem,index) ::= <<
+<stem>[<index>]
+>>
+
+subtract(lhs,rhs) ::= <<
+<lhs> - <rhs>
+>>
+
+assign(lvar, rvalue) ::= <<
+<lvar> = <rvalue>;
+>>
+
+binop(lhs, op, rhs) ::= <<
+<lhs> <op> <rhs>
+>>
+
+block(stmts) ::= <<
+{
+    <stmts; separator="\n">
+}
+>>
+
+cast(newClass, target) ::= <<
+(<newClass;format="typeReference">)(<target>)
+>>
+
+callMethod(nameElements, params) ::= <<
+<nameElements; separator="->">(<params; separator=",">)
+>>
+
+classDecl(className, baseClassName, interfaceNames) ::= <<
+class <className><if(baseClassName)>: public <baseClassName><endif> <if(interfaceNames)>, <interfaceNames; separator=","><endif>
+>>
+
+classHeader(className, baseClassName, interfaceNames) ::= <<
+<classDecl(...)>
+>>
+
+comment(text) ::= <</* <text> */>>
+
+constant(type, name, value) ::= <<
+public: static const <type> <name> = <value>;
+>>
+
+constructorBody(docComment, decl, contents, baseClassName, superParameters,instanceVariables,instanceInitializers) ::= <<
+
+<if(docComment)>
+/**
+ * <docComment>
+ */<endif>
+<decl>
+<if(superParameters)>
+    :<baseClassName>(<superParameters; separator=",">)
+    <if(instanceInitializers)>
+    ,<instanceVariables,instanceInitializers:{field,value | <field>(<value>)};separator=","><endif>
+<elseif(instanceInitializers)>:
+    <instanceVariables,instanceInitializers:{field,value | <field>(<value>)};separator=","><endif>{
+    <contents; separator="\n">
+}
+>>
+
+declareContainer(contentsType) ::= <<
+std::vector\<<contentsType;format="typeReference">\>
+>>
+
+declareFormalParameter(type, name) ::= <<
+<type;format="typeReference"> <name>
+>>
+
+declareInstanceField(modifiers, name, type, initializer) ::= <<
+<if(modifiers)><modifiers;format="modifiers"> <endif><type;format="typeReference"> <name><if(initializer)> = <initializer><endif>;
+>>
+
+declareLocalVariable(name, type, initializer) ::= <<
+<declareInstanceField(...)>
+>>
+
+declareVariadicReturnType(contentsType) ::= <<
+jburg::variadic_<contentsType;format="templateArg">Wrapper
+>>
+
+declareMethod(modifiers, name, parameters, returnType, exceptions) ::= <<
+<modifiers;format="modifiers"><returnType;format="typeReference"> <name>(<parameters; separator=",">)
+>>
+
+defineSingletonAccessor(singletonClass) ::= <<
+
+<singletonClass>* get<singletonClass>_instance()
+{
+    static <singletonClass> instance(this,NULL);
+    <if(config.initStaticAnnotation)><config.initStaticAnnotation><endif>
+    return &instance;
+}
+>>
+
+defineSingletonAnnotations(singletonAnnotations) ::= <<
+
+private:
+    <singletonAnnotations:defineSingletonAccessor()>    
+>>
+
+endEmitterBody() ::= <<
+};
+>>
+
+equals(lhs, rhs) ::= <<
+<binop(op="==", ...)>
+>>
+
+exprStmt(expr) ::= <<
+<expr>;
+>>
+
+forLoop(controlVar, startValue, endValue, comparison) ::= <<
+for(<controlVar> = <startValue>; <controlVar> <comparison> <endValue>; <controlVar>++)
+>>
+
+formalParameter(type, name) ::= <<
+<type;format="typeReference"> <name>
+>>
+
+getReferenceType(baseType) ::= <<
+<baseType;format="getReferenceType">
+>>
+
+goalStateEnumerated(nt) ::= <<
+<defaults.ntType>.<nt>
+>>
+
+goalStateInteger(nt) ::= <<
+<nt>
+>>
+
+goalStateUndecorated(nt) ::= <<
+__<nt>_NT
+>>
+
+greaterThan(lhs, rhs) ::= <<
+<lhs> \> <rhs>
+>>
+
+greaterThanOrEquals(lhs, rhs) ::= <<
+<lhs> \>= <rhs>
+>>
+
+identifier(id) ::= <<
+<id>
+>>
+
+if(condition) ::= <<
+if (<condition>)
+>>
+
+ifElseArm(condition, contents, elseArm) ::= <<
+else <if(condition)>if (<condition>)<endif> {
+    <contents; separator="\n">
+} <elseArm>
+>>
+
+ifThen(condition, contents, elseArm) ::= <<
+if (<condition>) {
+    <contents; separator="\n">
+} <elseArm>
+>>
+
+/* Not used in the C++ emitter. */
+inlineAdapter(specification) ::= <<
+>>
+
+innerClass(className, baseClassName, interfaceNames, contents) ::= <<
+
+<classDecl(...)>
+{
+    <contents;separator="\n">
+};
+
+>>
+
+isNull(expr) ::= << <expr> == NULL >>
+isNotNull(expr) ::= << <expr> != NULL >>
+
+labelFunction(getArity, getNthChild, setAnnotation) ::= <<
+public:
+    <"JBurgAnnotation";format="typeReference"> label(<config.iNodeClass> <config.initialParamName>) {
+        int arity  = <getArity>;
+        std::auto_ptr\<<"JBurgAnnotation";format="annotationAsTemplateArg"> \> holder(this->getJBurgAnnotation(<config.initialParamName>));
+        for(int i = 0; i \<arity; i++) {
+            holder->addChild(this->label(<getNthChild>));
+        }
+        <"JBurgAnnotation";format="typeReference"> result = holder.release();
+        <if(setAnnotation)><setAnnotation>;<endif>
+        return result;
+    }
+>>
+
+line(contents) ::= <<
+
+<contents;separator="\n">
+>>
+
+logicalAnd(lhs, rhs) ::= <<
+<lhs> && <rhs>
+>>
+
+logicalOr(lhs, rhs) ::= <<
+<lhs> || <rhs>
+>>
+
+maxIntValue() ::= <<MAX_INT_VALUE>>
+
+memberAccess(stem, member) ::= <<
+<stem>-\><member>
+>>
+
+method(docComment, decl, contents) ::= <<
+
+<if(docComment)>
+/**
+ * <docComment>
+ */<endif>
+<decl> {
+    <contents; separator="\n">
+}
+>>
+
+minimumOf(e1,e2) ::= <<
+std::min(<e1>,<e2>)
+>>
+
+narySubtreeAdd() ::= <<
+push_back
+>>
+
+narySubtreeGet(stem,index) ::= <<
+(<stem>).at(<index>)
+>>
+
+narySubtreeSize(stem) ::= <<
+(<stem>).size()
+>>
+
+newObject(type, parameters) ::= <<
+new <if(defaults.storageAllocator)>(<defaults.storageAllocator>.alloc(sizeof (<type;format="templateArg">))) <endif><type;format="templateArg">(<parameters; separator=",">)
+>>
+
+normalizedAdd(expr1, expr2) ::= <<
+jburg::normalizedAdd(<expr1>, <expr2>)
+>>
+
+ntMissingInt() ::= <<-1>>
+ntMissingEnumerated() ::= <<-1>>
+
+ntIteratorEnumerated() ::= <<
+for( <defaults.ntType> i: <defaults.ntType>.values() )
+>>
+
+ntIteratorInt() ::= <<
+for(int i = 0; i \<= nStates; i++)
+>>
+
+ntStateNameEnumerated() ::= <<i>>
+ntStateNameInt() ::= <<stateName[i]>>
+
+nullPointer() ::= <<NULL>>
+
+numericLiteral(literal) ::= <<
+<literal>
+>>
+
+popFromStack(valueType, stackName) ::= <<
+popStack(<stackName>).<valueType;format="intermediateType">
+>>
+
+procedureActualParameters(parameter) ::= <<
+(<parameter; separator=",">)
+>>
+
+procedureCall(procedureName, parameters) ::= <<
+<procedureName><parameters>
+>>
+
+pushReducerIntermediate(stackName, valueType, valueExpr) ::= <<
+jburg::ReducerIntermediateResult result;
+result.<valueType;format="intermediateType"> = <valueExpr>;
+<stackName>.push(result);
+>>
+
+pushToStack(stackName, value) ::= <<
+<stackName>.push(<value>)
+>>
+
+returnValue(value) ::= <<
+return <value>
+>>
+
+returnStmt(value) ::= <<
+return <value>;
+>>
+
+singletonInstance(singletonClass) ::= <<
+get<singletonClass>_instance()
+>>
+
+statement(expr) ::= <<
+<expr>;
+>>
+
+stringIntConcat(strArg, intArg) ::= <<
+jburg::stringIntConcat(<strArg>, <intArg>)
+>>
+
+subgoalsType(iNodeClass) ::= <<
+std::vector\<std::vector\<<defaults.iNodeClass>::JBurgSubgoal\> \>
+>>
+
+switch(expr, contents) ::= <<
+switch(<expr>) {
+    <contents; separator="\n">
+}
+>>
+
+switchCase(label, contents) ::= <<
+case <label>:<if(contents)> {<endif>
+    <contents; separator="\n">
+<if(contents)>}<endif>
+break;
+>>
+
+switchCaseNoFallthrough(label, contents) ::= <<
+case <label>:<if(contents)> {<endif>
+    <contents; separator="\n">
+<if(contents)>}<endif>
+>>
+
+switchDefault(contents) ::= <<
+default:<if(contents)>{<endif>
+    <contents; separator="\n">
+<if(contents)>}<endif>
+break;
+>>
+
+switchDefaultNoFallthrough(contents) ::= <<
+default:<if(contents)> {<endif>
+    <contents; separator="\n">
+<if(contents)>}<endif>
+>>
+
+throwDiagnostic(diagnostic) ::= <<
+throw std::logic_error(<diagnostic>)
+>>
+
+
+whileHeader(test) ::= <<
+while(<test>)
+>>
+
+whileStatement(test, contents) ::= <<
+<whileHeader(test)> {
+    <contents; separator="\n">
+}
+>>

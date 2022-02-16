@@ -1,0 +1,14 @@
+<BurmTest burm="Test3041228" expectedResult="3">
+
+    <Opcodes class="burmTest.ArithmeticOpcodes"/>
+    <grammar file="tests/3041228/3041228.jbg"/>
+
+
+    <Node opcode="ADD">
+        <Node opcode = "PAREN">
+            <Node opcode="INT" userObject="1"/>
+            <Node opcode="INT" userObject="2"/>
+        </Node>
+    </Node>
+
+</BurmTest>

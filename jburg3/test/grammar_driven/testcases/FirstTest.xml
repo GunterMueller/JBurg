@@ -1,0 +1,113 @@
+<Test>
+
+    <Testcase name="1+2" type="Int" expected="3">
+        <Node op="Add">
+            <Node op="IntLiteral" content="1"/>
+            <Node op="IntLiteral" content="2"/>
+        </Node>
+    </Testcase>
+
+    <Testcase name="concat" type="String" expected="abc">
+        <Node op="Add">
+            <Node op="StringLiteral" content="a"/>
+            <Node op="StringLiteral" content="bc"/>
+        </Node>
+    </Testcase>
+
+    <Testcase name="+3 + (1 + 1)" type="Int" expected="5">
+        <Node op="Add">
+            <Node op="Add">
+                <Node op="IntLiteral" content="3"/>
+            </Node>
+            <Node op="Add">
+                <Node op="ShortLiteral" content="1"/>
+                <Node op="IntLiteral" content="1"/>
+            </Node>
+        </Node>
+    </Testcase>
+
+    <Testcase name="-3 + (1 + 1)" type="Int" expected="-1">
+        <Node op="Add">
+            <Node op="Subtract">
+                <Node op="IntLiteral" content="3"/>
+            </Node>
+            <Node op="Add">
+                <Node op="ShortLiteral" content="1"/>
+                <Node op="IntLiteral" content="1"/>
+            </Node>
+        </Node>
+    </Testcase>
+
+    <Testcase name="2 * (1+2) - (1 + 1)" type="Int" expected="4">
+        <Node op="Subtract">
+            <Node op="Multiply">
+                <Node op="IntLiteral" content="2"/>
+                <Node op="Add">
+                    <Node op="IntLiteral" content="1"/>
+                    <Node op="IntLiteral" content="2"/>
+                </Node>
+            </Node>
+            <Node op="Add">
+                <Node op="ShortLiteral" content="1"/>
+                <Node op="IntLiteral" content="1"/>
+            </Node>
+        </Node>
+    </Testcase>
+
+    <Testcase name="2 + -1" type="Int" expected="1">
+        <Node op="Add">
+            <Node op="IntLiteral" content="2"/>
+            <Node op="Subtract">
+                <Node op="IntLiteral" content="1"/>
+            </Node>
+        </Node>
+    </Testcase>
+
+    <Testcase name="+2 + -1" type="Int" expected="1">
+        <Node op="Add">
+            <Node op="Add">
+                <Node op="IntLiteral" content="2"/>
+            </Node>
+            <Node op="Subtract">
+                <Node op="IntLiteral" content="1"/>
+            </Node>
+        </Node>
+    </Testcase>
+
+    <Testcase name="1+2+3" type="Int" expected="6">
+        <Node op="Add">
+            <Node op="IntLiteral" content="1"/>
+            <Node op="IntLiteral" content="2"/>
+            <Node op="IntLiteral" content="3"/>
+        </Node>
+    </Testcase>
+
+    <Testcase name="'foo'+'bar'" type="String" expected="foobar">
+        <Node op="Add">
+            <Node op="StringLiteral" content="foo"/>
+            <Node op="StringLiteral" content="bar"/>
+        </Node>
+    </Testcase>
+
+    <Testcase name="'foo'+22" type="String" expected="foo22">
+        <Node op="Add">
+            <Node op="StringLiteral" content="foo"/>
+            <Node op="IntLiteral" content="22"/>
+        </Node>
+    </Testcase>
+
+    <Testcase name="33+'foo'" type="String" expected="33foo">
+        <Node op="Add">
+            <Node op="IntLiteral" content="33"/>
+            <Node op="StringLiteral" content="foo"/>
+        </Node>
+    </Testcase>
+
+    <Testcase name="shortGuard negative" type="Int" expected="no output" expectedException="java.lang.IllegalArgumentException: No error handler produces Int">
+        <Node op="Add">
+            <Node op="IntLiteral" content="1"/>
+            <Node op="ShortLiteral" content="400000"/>
+        </Node>
+    </Testcase>
+
+</Test>

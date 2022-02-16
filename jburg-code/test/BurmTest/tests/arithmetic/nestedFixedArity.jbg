@@ -1,0 +1,16 @@
+@include "IntegerArithmetic.jbg"
+
+expression = PAREN(PAREN(ADD(expression l, expression r)), foodlepaaft third):1
+{
+    return l+r+third;
+}
+
+foodlepaaft = PAREN(expression zort+) : 1
+{
+    int result = 0;
+
+    for ( Integer i : (Vector<Integer>)zort)
+        result += i;
+
+    return result;
+}

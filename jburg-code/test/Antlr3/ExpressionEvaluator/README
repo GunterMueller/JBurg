@@ -1,0 +1,19 @@
+ExpressionEvaluator tests interoperability of ANTLR3 and JBurg.
+
+The ANTLR grammar is Ter's expression evaluator sample; see 
+http://www.antlr.org/wiki/display/ANTLR3/Expression+evaluator
+
+The BURG compiles code for a MIPS-like target.
+
+System requirements:
+
+ANTLR 3.0.1 or later
+JBurg 0.9.8 or later
+
+Build targets:
+
+ant help -- displays options.
+ant parser -- builds the ANTLR3 based lexer and parser.
+ant BURG -- builds the JBurg based code emitter
+ant compilejava -- compiles the generated Java files.
+ant build -- executes all build steps.

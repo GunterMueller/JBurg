@@ -1,0 +1,29 @@
+@ReducerNodeName node;
+@Implements burmTest.ArithmeticOpcodes;
+@INodeType  burmTest.TestINode;
+@ReturnType Integer;
+
+@Header
+{
+    import java.util.Vector;
+    @SuppressWarnings("unchecked")
+}
+
+@Members
+{
+
+    int checkCost(burmTest.TestINode node)
+    {
+        return 1;
+    }
+}
+
+expression=ADD(expression lhs, expression r): checkCost(getNode())
+{
+    return lhs.intValue() + r.intValue();
+}
+
+expression = INT(void): 1
+{
+    return Integer.parseInt(node.getUserObject().toString());
+}

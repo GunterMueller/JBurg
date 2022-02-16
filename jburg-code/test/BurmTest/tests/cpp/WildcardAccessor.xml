@@ -1,0 +1,17 @@
+<!--
+Note this test expects a different result than
+its operands imply; it's testing a canned wildcard reduction.
+-->
+<BurmTest burm="WildcardCppAccessorEmitter" expectedResult="79">
+
+    <grammar file="tests/cpp/WildcardAccessor.jbg"/>
+    <language value="cpp"/>
+    <cppsource path="tests/cpp/WildcardAccessorMain.cpp"/>
+    <executable path="gensrc/WildcardAccessor"/>
+
+    <Node opcode="ADD">
+        <Node opcode="INT" userObject="1"/>
+        <Node opcode="INT" userObject="2"/>
+    </Node>
+
+</BurmTest>

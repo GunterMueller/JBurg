@@ -1,0 +1,33 @@
+@Implements burmTest.ArithmeticOpcodes;
+
+@INodeType  burmTest.TestINode;
+
+@GetINodeOperator(x) {
+    return x.getOperator();
+}
+
+@GetINodeCount(x) {
+    return x.getArity();
+}
+
+@GetINodeChild(x,index) {
+    return x.getNthChild(index);
+}
+
+@ReturnType Integer;
+
+@Header
+{
+    @SuppressWarnings("unchecked")
+}
+
+expression=ADD(expression l, expression r): 1
+{
+    return l.intValue() + r.intValue();
+}
+
+expression = INT(void): 1
+{
+    // TODO: Give the parameter a name.
+    return Integer.parseInt(__p.getUserObject().toString());
+}

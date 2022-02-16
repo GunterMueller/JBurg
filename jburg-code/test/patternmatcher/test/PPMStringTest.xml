@@ -1,0 +1,179 @@
+<PPMTest verbose="false">
+
+    <Test name="a mapped to b">
+        <Text value="abcabbbbac"/>
+        <Pattern value="abc"/>
+        <InitialNaming>
+            <Mapping pattern="a" text="b"/>
+        </InitialNaming>
+        <Expected position="2">
+            <Matched pattern="b" text="c"/>
+            <Matched pattern="c" text="a"/>
+        </Expected>
+        <Expected position="8">
+            <Matched pattern="b" text="a"/>
+            <Matched pattern="c" text="c"/>
+        </Expected>
+    </Test>
+
+    <Test name="invert b/a">
+        <Text value="abcabbbbac"/>
+        <Pattern value="abc"/>
+        <InitialNaming>
+            <Mapping pattern="a" text="b"/>
+            <Mapping pattern="b" text="a"/>
+        </InitialNaming>
+        <Expected position="8">
+            <Matched pattern="c" text="c"/>
+        </Expected>
+    </Test>
+
+    <Test name="ab* matches abc or abd">
+        <Text value="abcaabbbacabd"/>
+        <Pattern value="abc"/>
+        <InitialNaming>
+            <Mapping pattern="a" text="a"/>
+            <Mapping pattern="b" text="b"/>
+        </InitialNaming>
+        <Expected position="1">
+            <Matched pattern="c" text="c"/>
+        </Expected>
+        <Expected position="11">
+            <Matched pattern="c" text="d"/>
+        </Expected>
+    </Test>
+
+    <Test name="a*c matches abd or axd">
+        <Text value="abcaabdbacaxd"/>
+        <Pattern value="abc"/>
+        <InitialNaming>
+            <Mapping pattern="a" text="a"/>
+            <Mapping pattern="c" text="d"/>
+        </InitialNaming>
+        <Expected position="5">
+            <Matched pattern="b" text="b"/>
+        </Expected>
+        <Expected position="11">
+            <Matched pattern="b" text="x"/>
+        </Expected>
+    </Test>
+
+    <!-- This pattern will match abcd but not axxd, because the two unspecified symbols are different. -->
+    <Test name="a**c matches abcd but not axxd">
+        <Text value="abcaabcdbacaxxd"/>
+        <Pattern value="abwc"/>
+        <InitialNaming>
+            <Mapping pattern="a" text="a"/>
+            <Mapping pattern="c" text="d"/>
+        </InitialNaming>
+        <Expected position="5">
+            <Matched pattern="b" text="b"/>
+            <Matched pattern="w" text="c"/>
+        </Expected>
+    </Test>
+
+    <!-- This pattern will match axxd but not abcd, because the two unspecified symbols are the same. -->
+    <Test name="a**c matches axxd but not abcd">
+        <Text value="abcaabcdbacaxxd"/>
+        <Pattern value="abbc"/>
+        <InitialNaming>
+            <Mapping pattern="a" text="a"/>
+            <Mapping pattern="c" text="d"/>
+        </InitialNaming>
+        <Expected position="12">
+            <Matched pattern="b" text="x"/>
+        </Expected>
+    </Test>
+
+    <Test name="match sequentially different patterns">
+        <Text value="abcabdabeabf"/>
+        <Pattern value="abc"/>
+        <InitialNaming>
+            <Mapping pattern="a" text="a"/>
+            <Mapping pattern="b" text="b"/>
+        </InitialNaming>
+        <Expected position="1">
+            <Matched pattern="c" text="c"/>
+        </Expected>
+        <Expected position="4">
+            <Matched pattern="c" text="d"/>
+        </Expected>
+        <Expected position="7">
+            <Matched pattern="c" text="e"/>
+        </Expected>
+        <Expected position="10">
+            <Matched pattern="c" text="f"/>
+        </Expected>
+    </Test>
+
+    <Test name="match patterns, all different">
+        <Text value="abcdefghijklmaaabbbcccddd"/>
+        <Pattern value="abc"/>
+        <InitialNaming/>
+        <Expected position="1">
+            <Matched pattern="a" text="a"/>
+            <Matched pattern="b" text="b"/>
+            <Matched pattern="c" text="c"/>
+        </Expected>
+        <Expected position="4">
+            <Matched pattern="a" text="d"/>
+            <Matched pattern="b" text="e"/>
+            <Matched pattern="c" text="f"/>
+        </Expected>
+        <Expected position="7">
+            <Matched pattern="a" text="g"/>
+            <Matched pattern="b" text="h"/>
+            <Matched pattern="c" text="i"/>
+        </Expected>
+        <Expected position="10">
+            <Matched pattern="a" text="j"/>
+            <Matched pattern="b" text="k"/>
+            <Matched pattern="c" text="l"/>
+        </Expected>
+    </Test>
+
+    <Test name="match overlapping sequences">
+        <Text value="abbaab"/>
+        <Pattern value="ab"/>
+        <InitialNaming/>
+        <Expected position="1">
+            <Matched pattern="a" text="a"/>
+            <Matched pattern="b" text="b"/>
+        </Expected>
+        <Expected position="3">
+            <Matched pattern="a" text="b"/>
+            <Matched pattern="b" text="a"/>
+        </Expected>
+        <Expected position="5">
+            <Matched pattern="a" text="a"/>
+            <Matched pattern="b" text="b"/>
+        </Expected>
+    </Test>
+
+    <Test name="match unit pattern">
+        <Text value="abc"/>
+        <Pattern value="a"/>
+        <InitialNaming/>
+        <Expected position="1">
+            <Matched pattern="a" text="a"/>
+        </Expected>
+        <Expected position="2">
+            <Matched pattern="a" text="b"/>
+        </Expected>
+        <Expected position="3">
+            <Matched pattern="a" text="c"/>
+        </Expected>
+    </Test>
+
+    <!-- Note this pattern exposes a weakness in the algorithm -->
+    <Test name="match vacuous pattern">
+        <Text value="abc"/>
+        <Pattern value=""/>
+        <InitialNaming/>
+        <Expected position="1"/>
+        <Expected position="2"/>
+        <Expected position="3"/>
+        <Expected position="4"/> <!-- Shouldn't be here -->
+    </Test>
+
+</PPMTest>

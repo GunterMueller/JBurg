@@ -1,0 +1,13 @@
+<BurmTest burm="ExtendsBaseBURM" expectedResult="3">
+
+    <Opcodes class="burmTest.ArithmeticOpcodes"/>
+    <grammar file="tests/extends/Extend1.jbg"/>
+
+    <javaSupportFiles srcdir="tests/extends" includes="BaseBURM.java"/>
+
+    <Node opcode="ADD">
+        <Node opcode="INT" userObject="1"/>
+        <Node opcode="INT" userObject="2"/>
+    </Node>
+
+</BurmTest>

@@ -1,0 +1,99 @@
+<project name="JBurgAntlr3Example" default="help">
+
+	<property name="antlr3.home" location="F:/work/antlr-3.0.1" />
+
+	<target name="help">
+		<echo>
+ant help -- displays options.
+ant parser -- builds the ANTLR3 based lexer and parser.
+ant BURG -- builds the JBurg based code emitter.
+ant compilejava -- Compile Java files.
+ant build -- executes all build steps.
+ant test -- run the test program and evaluate expressions.
+		</echo>
+	</target>
+
+	<target name="antlr-usage">
+		<java classname="org.antlr.Tool" fork="yes" failonerror="yes" >
+			<arg value="-X" />
+			<classpath>
+				<pathelement path="${antlr3.home}/lib/antlr-3.0.1.jar"/>
+				<pathelement path="${antlr3.home}/lib/antlr-2.7.7.jar"/>
+				<pathelement path="${antlr3.home}/lib/stringtemplate-3.1b1.jar"/>
+				<pathelement path="${antlr3.home}/lib/antlr-runtime-3.0.1.jar"/>
+			</classpath>
+		</java>
+	</target>
+
+	<target name="parser">
+		<echo>Building lexer and parser.</echo>
+
+		<java classname="org.antlr.Tool" fork="yes" failonerror="yes" >
+			<arg value="Expr.g" />
+			<classpath>
+				<pathelement path="${antlr3.home}/lib/antlr-3.0.1.jar"/>
+				<pathelement path="${antlr3.home}/lib/antlr-2.7.7.jar"/>
+				<pathelement path="${antlr3.home}/lib/stringtemplate-3.1b1.jar"/>
+				<pathelement path="${antlr3.home}/lib/antlr-runtime-3.0.1.jar"/>
+			</classpath>
+		</java>
+	</target>
+
+	<target name="BURG">
+		<java classname="jburg.burg.JBurgMain" fork="yes" failonerror="yes" >
+			<!-- Uncomment this to build a debug reducer. -->
+			<!-- arg value="-g"/ -->
+			<arg value="Expr.jburg"/>
+			<arg value="-outputfile"/>                        
+			<arg value="ExprEmitter.java"/>
+			<classpath>
+				<pathelement path="."/>
+				<pathelement path="../../../classes"/>
+				<pathelement path="${antlr3.home}/lib/antlr-2.7.7.jar"/>
+			</classpath>
+		</java>
+	</target>
+
+	<target name="compilejava">
+		<javac debug="${debug.symbols}" 
+			srcdir="."
+			destdir="."
+			includes="*.java">
+			<classpath>
+				<pathelement path="${antlr3.home}/lib/antlr-runtime-3.0.1.jar"/>
+				<pathelement path="${antlr3.home}/lib/antlr-3.0.1.jar"/>
+			</classpath>
+		</javac>
+	</target>
+
+	<target name="build" depends="parser, BURG, compilejava"/>
+
+	<target name="test">
+		<java classname="ExpressionEvalautorDriver" fork="yes" failonerror="yes">
+			<arg value="Expr.test"/>
+			<classpath>
+				<pathelement path="."/>
+				<pathelement path="${antlr3.home}/lib/antlr-runtime-3.0.1.jar"/>
+			</classpath>
+		</java>
+	</target>
+
+	<!--  Clean up intermediate files. -->
+	<target name="clean">
+		<delete file="Expr__.g"/>
+		<delete file="Expr.tokens"/>
+		<delete file="ExprLexer.java"/>
+		<delete file="ExprParser.java"/>
+		<delete file="ExprEmitter.java"/>
+		<delete>
+			<fileset dir="${basedir}" includes="**/*.class" defaultexcludes="no"/>
+		</delete>
+	</target>
+
+	<target name="superclean" depends="clean">
+		<echo>Removing VIM backup files.</echo>
+		<delete>
+			<fileset dir="${basedir}" includes="**/*~" defaultexcludes="no"/>
+		</delete>
+	</target>
+</project>

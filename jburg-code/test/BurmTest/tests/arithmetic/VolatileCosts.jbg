@@ -1,0 +1,57 @@
+@Implements burmTest.ArithmeticOpcodes;
+
+@INodeType  burmTest.TestINode;
+@ReturnType Integer;
+
+@VolatileCostFunctions speeft, zoot;
+
+@Header
+{
+    import java.util.Vector;
+    @SuppressWarnings("unchecked")
+}
+
+{
+
+    public int hitCount = 0;
+
+    int speeft(burmTest.TestINode node)
+    {
+        return hitCount++;
+    }
+
+    int zoot(burmTest.TestINode node)
+    {
+        return Integer.MAX_VALUE;
+    }
+}
+
+expression=PAREN(expression ex): 1
+{
+    return hitCount;
+}
+
+expression=ADD(expression lhs, expression r): speeft()
+{
+    return lhs.intValue() + r.intValue();
+}
+
+expression=ADD(expression_prime lhs, expression_prime r): speeft()
+{
+    return lhs.intValue() + r.intValue();
+}
+
+expression = INT(void): 1
+{
+    return Integer.parseInt(#expression.getUserObject().toString());
+}
+
+expression_prime = INT(void): 1
+{
+    return Integer.parseInt(#expression_prime.getUserObject().toString());
+}
+
+expression_prime = expression: zoot()
+{
+    return expression;
+}

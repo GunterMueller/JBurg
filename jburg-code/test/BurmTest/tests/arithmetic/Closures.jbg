@@ -1,0 +1,52 @@
+@Implements burmTest.ArithmeticOpcodes;
+
+@INodeType  TestINode;
+@ReturnType Integer;
+
+@Header
+{
+    import java.util.HashSet;
+    import burmTest.TestINode;
+    @SuppressWarnings("unchecked")
+}
+
+{
+    static final int ONE = 1;
+    static final int TWO = 2;
+
+    HashSet<TestINode> visited = new HashSet<TestINode>();
+
+    int ensureOnlyCalledOnce(TestINode node)
+    {
+        if ( ! visited.add(node) )
+             throw new IllegalStateException(String.format("already visited %s",node));
+        return 234;
+    }
+}
+
+expression=ADD(expression lhs, expression r): 1
+{
+    return lhs.intValue() + r.intValue();
+}
+
+expression = int_constant: ONE
+{
+    //  This is a transitive closure open-coded.
+    return int_constant;
+}
+
+expression = int_constant: TWO
+{
+    throw new IllegalStateException("Unreachable");
+}
+
+expression = int_constant: ensureOnlyCalledOnce()
+{
+    throw new IllegalStateException("Unreachable");
+}
+
+int_constant = INT(void): 1
+{
+    return Integer.parseInt(#int_constant.getUserObject().toString());
+}
+

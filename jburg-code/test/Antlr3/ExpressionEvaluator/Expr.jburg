@@ -1,0 +1,52 @@
+/*
+ *  This BURM tests ANTLR3 to JBurg interoperability.
+ */
+
+header
+{
+    import org.antlr.runtime.tree.Tree;
+}
+
+/*
+ *  The ANTLR3 emitter accepts Tree nodes as i-code.
+ */
+INodeType org.antlr.runtime.tree.Tree;
+
+//  This emitter just does arithmetic; return results as Integer objects.
+ReturnType Integer;
+
+
+//  This simple grammar only handles binary expressions and atoms.
+//  (Mostly because I don't have the ANTLR grammar for unary exprs right)...
+IntegerExpression = BinaryExpression;
+// IntegerExpression = UnaryExpression;
+IntegerExpression = Atom;
+
+BinaryExpression = AddExpr;
+BinaryExpression = MultExpr;
+
+
+/*
+ *  Recogize a PLUS node, add up its operands, and return the result.
+ */
+AddExpr = ExprParser.PLUS(IntegerExpression arg1, IntegerExpression arg2): 1
+{
+    return new Integer(arg1.intValue() + arg2.intValue());
+}
+
+/*
+ *  Recogize a STAR (multiply) node, multiply its operands, 
+ *  and return the result.
+ */
+MultExpr = ExprParser.STAR(IntegerExpression arg1, IntegerExpression arg2): 1
+{
+    return new Integer(arg1.intValue() * arg2.intValue());
+}
+
+/*
+ *  Recognize an integer literal, and return its value.
+ */
+Atom = ExprParser.INT(void) : 1
+{
+    return new Integer(#Atom.getText());
+}

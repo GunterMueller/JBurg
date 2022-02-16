@@ -1,0 +1,35 @@
+@Implements burmTest.ArithmeticOpcodes;
+
+@INodeType  burmTest.TestINode;
+
+@ReturnType Integer;
+
+@Header
+{
+    import java.util.Vector;
+    @SuppressWarnings("unchecked")
+
+}
+
+{
+    static int costCallCount = 0;
+
+    int addCost(burmTest.TestINode p, int constCost)
+    {
+        costCallCount++;
+        return constCost;
+    }
+}
+
+expression=ADD(expression l, expression r): addCost(getNode(), addCost(getNode().getNthChild(0), 12))
+{
+    if ( costCallCount != 2 )
+        throw new IllegalStateException(String.format("Expected costCallCount 2, actual %d", costCallCount));
+
+    return l.intValue() + r.intValue();
+}
+
+expression = INT(void): 1
+{
+    return Integer.parseInt(#expression.getUserObject().toString());
+}

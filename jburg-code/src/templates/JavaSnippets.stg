@@ -1,0 +1,461 @@
+/*
+ * Java code fragments used by JBurg's Java emitter.
+ */
+group EmitJava;
+
+actionRoutineParameter(paramType, paramName, initialValue) ::= <<
+<paramType> <paramName> = <initialValue>;
+>>
+
+add(lhs, rhs) ::= <<
+(<lhs> + <rhs>)
+>>
+
+adHocDirectives(directives) ::= <<
+<directives; separator="\n">
+>>
+
+annotationAccessor() ::= <<
+
+    public Object getAnnotation(<defaults.iNodeClass> <defaults.configuration.annotationAccessor.getParameterName>)
+    <defaults.configuration.annotationAccessor.getAccessor>
+    public void setAnnotation(<defaults.iNodeClass> <defaults.configuration.annotationAccessor.setINodeName>, Object <defaults.configuration.annotationAccessor.setParameterName>)
+    <defaults.configuration.annotationAccessor.setAccessor>
+
+>>
+
+arrayLiteral(contents) ::= <<
+{
+    <contents; separator=",\n">
+}
+>>
+
+assign(lvar, rvalue) ::= <<
+<lvar> = <rvalue>;
+>>
+
+beginEmitterBody(reducerStack) ::= << {
+    java.util.Stack\<Object\> <reducerStack> = new java.util.Stack\<Object\>();
+>>
+
+binop(lhs, op, rhs) ::= <<
+<lhs> <op> <rhs>
+>>
+
+block(contents) ::= <<
+{
+    <contents; separator="\n">
+}
+>>
+
+BURMProperty(propertyType, propertyName, canonicalName) ::= <<
+    /* Property specified as <propertyName> */
+    private <propertyType> <propertyName>;
+    /** @return value of <propertyName> */
+    public <propertyType> get<canonicalName>()
+    {
+        return this.<propertyName>;
+    }
+
+    /** Set <propertyName>.
+     * @param value to assign to <propertyName>
+     */
+    public void set<canonicalName>(<propertyType> <propertyName>)
+    {
+        this.<propertyName> = <propertyName>;
+    }
+>>
+
+callMethod(nameElements, params) ::= <<
+<nameElements; separator=".">(<params; separator=",">)
+>>
+
+callSuper(parameters) ::= <<
+super(<parameters; separator=",">);
+>>
+
+cast(newClass, target) ::= <<
+((<newClass>)<target>)
+>>
+
+classDecl(className, baseClassName, interfaceNames) ::= <<
+class <className> <if(baseClassName)> extends <baseClassName><endif> <if(interfaceNames)>implements <interfaceNames; separator=","><endif>
+>>
+
+classHeader(className, baseClassName, interfaceNames) ::= <<
+public <classDecl(...)>
+>>
+
+constant(type, name, value) ::= <<
+final public static <type> <name> = <value>;
+>>
+
+constructorBody(docComment, decl, contents, baseClassName, superParameters) ::= <<
+
+<if(docComment)>
+/**
+ * <docComment>
+ */<endif>
+<decl> {
+    <if(superParameters)>
+    super(<superParameters; separator=",">);
+    <endif>
+    <contents; separator="\n">
+}
+>>
+
+comment(text) ::= <</* <text> */>>
+
+declareInstanceField(modifiers, name, type, initializer) ::= <<
+<if(modifiers)><modifiers;format="modifiers"> <endif><type;format="typeReference"> <name><if(initializer)> = <initializer><endif>;
+>>
+
+declareLocalVariable(name, type, initializer) ::= <<
+<declareInstanceField(...)>
+>>
+
+declareMethod(modifiers, name, parameters, returnType, exceptions) ::= <<
+<if(modifiers)><modifiers; format="modifiers"> <endif><returnType> <name>(<parameters; separator=",">)<if(exceptions)> <throwsClause(exceptions)><endif>
+>>
+
+declareContainer(contentsType) ::= <<
+java.util.Vector\<<contentsType>\>
+>>
+
+declareVariadicReturnType(contentsType) ::= <<
+java.util.Vector\<<contentsType>\>
+>>
+
+defineSingletonAnnotation(singletonClass) ::= <<
+    protected <singletonClass> <singletonInstance(singletonClass)> = new <singletonClass>(this, null);
+>>
+
+defineSingletonAnnotations(singletonAnnotations) ::= <<
+    <singletonAnnotations:defineSingletonAnnotation()>
+>>
+
+endEmitterBody() ::= <<
+}
+>>
+
+equals(lhs, rhs) ::= <<
+<binop(op="==", ...)>
+>>
+
+exprStmt(expr) ::= <<
+<expr>;
+>>
+
+factoredReferenceGuard(parent, positionInParent) ::= <<
+<parent>.getArity() \> <positionInParent>? <parent>.getNthChild(<positionInParent>): errorAnnotation
+>>
+
+forLoop(controlVar, startValue, endValue, comparison) ::= <<
+for(<controlVar> = <startValue>; <controlVar> <comparison> <endValue>; <controlVar>++)
+>>
+
+formalParameter(type, name) ::= <<
+<type> <name>
+>>
+
+getReferenceType(baseType) ::= <<
+<baseType>
+>>
+
+goalStateEnumerated(nt) ::= <<
+<defaults.ntType>.<nt>
+>>
+
+goalStateInteger(nt) ::= <<
+<nt>
+>>
+
+goalStateUndecorated(nt) ::= <<
+__<nt>_NT
+>>
+
+greaterThan(lhs, rhs) ::= <<
+<lhs> \> <rhs>
+>>
+
+greaterThanOrEquals(lhs, rhs) ::= <<
+<lhs> \>= <rhs>
+>>
+
+if(condition) ::= <<
+if ( <condition> )
+>>
+
+ifElseArm(condition, contents, elseArm) ::= <<
+else <if(condition)>if ( <condition> )<endif> {
+    <contents; separator="\n">
+} <elseArm>
+>>
+
+ifThen(condition, contents, elseArm) ::= <<
+if (<condition>) {
+    <contents; separator="\n">
+} <elseArm>
+>>
+
+identifier(id) ::= <<
+<id>
+>>
+
+/* TODO: The Java boilerplate can
+ * check to see if the inline adapter
+ * is online and do this without logic
+ * checks, as the C++ boilerplate does.
+ */
+inlineAdapter(specification) ::= <<
+
+    static <defaults.operatorType> _jburg_getOperator(<defaults.iNodeClass> <specification.getOperatorParameterName>)
+    <specification.getOperator>
+
+    static <defaults.iNodeClass> _jburg_getNthChild(<defaults.iNodeClass> <specification.getNthChildParameterName>, int <specification.getNthChildIndex>)
+    <specification.getNthChild>
+
+    static int _jburg_getChildCount (<defaults.iNodeClass> <specification.getArityParameterName>)
+    <specification.getArity>
+>>
+
+innerClass(className, baseClassName, interfaceNames, contents) ::= <<
+
+<classDecl(...)> {
+    <contents;separator="\n">
+}
+
+>>
+
+isNull(expr) ::= <<
+<expr> == null
+>>
+
+isNotNull(expr) ::= <<
+<expr> != null
+>>
+
+labelFunction(getArity, getNthChild, setAnnotation) ::= <<
+public  JBurgAnnotation label(<config.iNodeClass> <config.initialParamName>) {
+    int             arity   = <getArity>;
+    JBurgAnnotation result  = this.getJBurgAnnotation(to_be_labelled);
+
+    for(int i = 0; i \< arity; i++) {
+        result.addChild(this.label(<getNthChild>));
+    }
+
+    <if(setAnnotation)><setAnnotation>;<endif>
+    return result;
+}
+>>
+
+line(contents) ::= <<
+
+<contents;separator="\n">
+>>
+
+logicalAnd(lhs, rhs) ::= <<
+<lhs> && <rhs>
+>>
+
+logicalOr(lhs, rhs) ::= <<
+<lhs> || <rhs>
+>>
+
+maxIntValue() ::= "Integer.MAX_VALUE"
+
+memberAccess(stem, member) ::= <<
+<if(stem)><stem>.<endif><member>
+>>
+
+method(docComment, decl, contents) ::= <<
+
+<if(docComment)>
+/**
+ * <docComment>
+ */<endif>
+<decl> {
+    <contents; separator="\n">
+}
+>>
+
+minimumOf(e1,e2) ::= <<
+Math.min(<e1>,<e2>)
+>>
+
+narySubtreeAdd() ::= <<
+add
+>>
+narySubtreeGet(stem, index) ::= <<
+<stem>.get(<index>)
+>>
+
+narySubtreeSize(stem) ::= <<
+<stem>.size()
+>>
+
+newObject(type, parameters) ::= <<
+new <type>(<parameters; separator=",">)
+>>
+
+nonterminalConstants(nStates) ::= <<
+
+    <config.goalStateNames:{public static final int <goalStateUndecorated(it)> = <i>;};separator="\n">
+    public static final int nStates = <nStates>;
+
+>>
+
+normalizedAdd(expr1, expr2) ::= <<
+normalizedAdd(<expr1>, <expr2>)
+>>
+
+not(operand) ::= <<
+!(operand)
+>>
+
+notEquals(lhs, rhs) ::= <<
+<binop(op="!=", ...)>
+>>
+
+ntIteratorEnumerated() ::= <<
+for( <defaults.ntType> i: <defaults.ntType>.values() )
+>>
+
+ntIteratorInt() ::= <<
+for(int i = 0; i \<= nStates; i++)
+>>
+
+ntMissingEnumerated() ::= <<
+<nullPointer()>
+>>
+
+ntMissingInt() ::= <<0>>
+
+ntStateNameEnumerated() ::= <<i>>
+ntStateNameInt() ::= <<stateName[i]>>
+
+nullPointer() ::= <<null>>
+
+numericLiteral(literal) ::= <<
+<literal>
+>>
+
+packageHeader(packageName) ::= <<
+package <packageName>;
+>>
+
+popFromStack(valueType, stackName) ::= <<
+(<valueType>)<stackName>.pop()
+>>
+
+procedureActualParameters(parameter) ::= <<
+(<parameter; separator=",">)
+>>
+
+procedureCall(procedureName, parameters) ::= <<
+<procedureName><parameters>
+>>
+
+pushReducerIntermediate(stackName, valueType, valueExpr) ::= <<
+<pushToStack(stackName=stackName,value=valueExpr)>;
+>>
+
+pushToStack(stackName, value) ::= <<
+<stackName>.push(<value>)
+>>
+
+returnValue(value) ::= <<
+return <value>
+>>
+
+returnStmt(value) ::= <<
+return <value>;
+>>
+
+singletonInstance(singletonClass) ::= <<
+<singletonClass>_instance
+>>
+
+statement(expr) ::= <<
+<expr>;
+>>
+
+stringIntConcat(strArg, intArg) ::= <<
+<strArg> + <intArg>
+>>
+
+subgoalAccessElement(accessElement) ::= <<
+<accessElement.index>
+>>
+
+subgoalDeclaration(subgoal, initialPosition, accessPath) ::= <<
+new JBurgSubgoal(<subgoal>,<initialPosition><if(accessPath)>,<endif><accessPath:subgoalAccessElement(); separator=",">)
+>>
+
+subgoalInitialNary(position) ::= <<
+true, <position>
+>>
+subgoalInitialFixed() ::= <<false, 0>>
+
+subgoalMissing() ::= <<
+<nullPointer()>
+>>
+
+subgoalTableHeader(subgoalArrayName, declContents) ::= <<
+private static final JBurgSubgoal[][] <subgoalArrayName> = 
+<declContents>;
+>>
+
+subtract(lhs, rhs) ::= <<
+<binop(op="-", ...)>
+>>
+
+switch(expr, contents) ::= <<
+switch(<expr>) {
+    <contents; separator="\n">
+}
+>>
+
+switchCase(label, contents) ::= <<
+case <label>: <if(contents)>{<endif>
+    <contents; separator="\n">
+<if(contents)>}<endif>
+break;
+>>
+
+switchCaseNoFallthrough(label, contents) ::= <<
+case <label>: <if(contents)>{<endif>
+    <contents; separator="\n">
+<if(contents)>}<endif>
+>>
+
+switchDefault(contents) ::= <<
+default:<if(contents)> {<endif>
+    <contents; separator="\n">
+<if(contents)>}<endif>
+break;
+>>
+
+switchDefaultNoFallthrough(contents) ::= <<
+default:<if(contents)> {<endif>
+    <contents; separator="\n">
+<if(contents)>}<endif>
+>>
+
+throwDiagnostic(diagnostic) ::= <<
+throw new IllegalStateException(<diagnostic>)
+>>
+
+throwsClause(exceptions) ::= <<
+<if(exceptions)>throws <exceptions; separator=","><endif>
+>>
+
+whileHeader(test) ::= <<
+while(<test>)
+>>
+
+whileStatement(test, contents) ::= <<
+<whileHeader(test)> {
+    <contents; separator="\n">
+}
+>>

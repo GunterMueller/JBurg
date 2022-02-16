@@ -1,0 +1,370 @@
+<h2>Theory and Internals of JBurg and the BURM</h2>
+
+<h3>Basic Components of a JBurg-generated BURM</h3>
+<p>JBurg generates bottom-up rewrite machines that use pattern-matching
+and dynamic programming to find a minimum-cost traversal of the tree
+in an initial <b>label</b> pass, and a second <b>reduce</b> pass
+that traverses the tree and emits code.
+
+
+<h3>A Case Study: x + 1 and 1 + 2</h3>
+
+<p>Think for a moment about how a code generator generator
+can generate good code for the expressions
+<code>x + 1</code> 
+and
+<code>1 + 1</code>.
+A code sequence for 
+<code>x + 1</code>
+(assuming x is an int) is:
+<dir><pre><code>
+ALOAD <i>n</i>
+ICONST 1
+IADD
+</code></pre></dir>
+But the code sequence for 
+<code>1 + 1</code>
+can be constant-folded:
+<dir><pre><code>
+ICONST 2
+</code></pre></dir>
+
+<p>How does one write code that can recognize these patterns?
+Hand-coded top-down traversal code might look like:
+<pre><code>
+	switch ( currentNode.type )
+	{
+		...
+		case PLUS:
+		if ( isConstantInt ( currentNode.leftChild() ) && isConstantInt (currentNode.rightChild() ) )
+		{
+			int foldedValue = getConstantInt(currentNode.leftChild()) + getConstantInt(currentNode.rightChild());
+			emitConstantInt ( foldedValue );
+		}
+		else if ( isConstantInt ( currentNode.rightChild() ) )
+		{
+		}
+	}
+	...
+
+	<font color="darkGreen">// The instruction depends on the size of the constant.</font>
+	private void emitConstantInt ( int value )
+	{
+		if ( value &lt; FIXME: check JVM spec )
+				emit ( new ICONST(value) );
+		else if ( value &lt; ... )
+				emit ( new BIPUSH(value) );
+		else
+			emit ( new LDC( constantPoolEntry(value) );
+	}
+</code></pre>
+And so on.
+
+<h4>Dynamic Programming in a BURM</h4>
+
+One of the difficult problems a code generator faces is that there are many choices
+that might be correct.  
+For example, if the code generator sees PLUS(<i>identifier</i>, <i>integer_literal</i>),
+is this an integer addition or a floating-point addition?
+If the code generator works from the top down, then we might use one of these methods:
+<ul>
+	<li>If the statement is of the form <code>d = x + 1</code>, (d being a double and 
+	x an int), then the assignment statement is the node that "knows" this is a 
+	floating-point addition.
+	Information about this flows down the tree, from the assignment to a cast of the
+	right-hand side of the assignment to double.
+	The information doesn't have to flow very far, because programming languages are
+	designed with this problem in mind: <code>x + 1</code> can proceed as integer
+	addition, to be converted to double just before it's assigned.
+    <li>If, on the other hand, the statement is <code>x + 1.0</code>, then it's the 
+	floating-point constant that "knows" that the expression is floating-point: 
+	information flows up the tree.
+</ul>
+
+<p>Dynamic programming is a problem-solving technique that is very well suited to 
+solving these kinds of problems.
+Dynamic Programming subdivides an overall problem (generating code from an AST) 
+into a number of <i>stages</i> that can be solved individually.
+
+The nodes of a syntax tree form a natural hierarchy that can be readily
+adapted into stages (think of PLUS again: addition of two values is a
+self-contained problem that can be solved at the PLUS node's level).
+
+The possible solutions to a stage are called its <i>states</i>
+Each stage/state pair is also assigned a cost:
+if multiple possible solutions exist, then the least costly solution wins.
+
+<p>JBurg-type code emitters typically use a common set of states that
+correspond to the type of operand on a runtime stack, the value in a
+register, or the current statement.
+For example, in the JBurg pattern
+<dir><pre><code>
+    <font color="blue">int</font> PLUS(<font color="blue">int</font>, <font color="blue">constant_int</font>)
+</code></pre></dir>
+The states are <code><font color="blue">int</font></code> and <font color="blue">constant_int</font></code>.
+
+<a name="optimality">
+<h4>The <i>Principle of Optimality</i></h4>
+Again, consider the rule <code>PLUS(int, int)</code> and the instruction sequence it will generate:
+<code><pre>
+    <i>code to push operand1 on the stack</i>
+    <i>code to push operand2 on the stack</i>
+	IADD
+</pre></code>
+
+One of the most important principles of computer architecture is that instructions such as IADD are not
+sensitive to the way their operands were derived: we can reason about the IADD,
+its inputs (two ints on the runtime stack),
+and its results (an int left on the runtime stack) without knowing how the inputs were computed.
+Similarly, the BURM pattern-matcher can report a successful match for the PLUS(int, int) pattern
+without knowing how its children get to the int state: it is enough to know that they have a bounded
+instruction sequence that can produce this state.
+This is known as the <i>Principle of Optimality.</i>
+
+<h4>The "Principle of Non-Interference"</h4>
+The JVM specification also does not place any constraints on the way that an IADD instruction's result
+may be used; the result is simply left on the runtime stack  Downstream instructions do not influence
+the IADD at all.
+At the node level, this implies that as soon as we've computed the least-cost sequence that matches 
+the PLUS node and all its children, we could go ahead and generate code.
+Thus a BURM could run in a single pass.
+
+<p><!-- FIXME: are there references that give this principle a name? -->
+We might call this the "Principle of Non-Interference."
+JBurg does <b>not</b> consider the principle of non-interference to be valid over the entire tree.
+The principle of non-interference can be violated in two ways:
+<ul>
+	<li>JBurg allows patterns to match multiple levels of the tree, for example,
+	<code>int = MULTIPLY(PLUS(int, int) constant_int)</code>.
+	<p>This grammar can be <i>normalized</i> to remove this obstacle:
+	<dir><pre><code>
+	int = MULTIPLY(generatedState1, constant_int): <i>cost</i> { <i>Java</i> }
+	generatedState1 = PLUS(int, int): <i>cost</i> { <i>Java</i> }
+	</code></pre></dir>
+	The fun part of this transformation is figuring out how to factor
+	the original rule's <i>cost</i> and <code><i>Java</i></code> information.
+
+	<p><li>A node may need its children to emit specific code sequences, and so it can 
+	request that they attain specific goal states.
+	Consider a PLUS node that chose to emit an <code>IADD</code> instruction, 
+	whose children were free to choose to emit 32-bit floating-point numbers: 
+	the <code>IADD</code> would produce garbage with these operands.
+</ul>
+
+<p>One of JBurg's pending tasks is to analyze a node's context to determine 
+if the principle of non-interference holds for the node.
+
+<p>One-pass rewrites are especially suitable for tasks such as constant folding.
+The principle of non-interference holds through simple algebraic transformations:
+<code>1 + 1</code> is equivalent to <code>2</code>.
+The one-pass rewrite becomes compelling when <code>1 + 1</code> must be
+translated into a bytecode instruction: the best instruction to use is an
+<code>ICONST_2</code> instruction, but this is not obvious from inspection
+of the PLUS(constant_int, constant_int) INode -- the inspection happens in
+the labelling pass, and the addition happens in the reduction pass.
+If the entire subtree were collapsed into <code>2</code> at first
+inspection, then the labeller would have no trouble emitting an <code>ICONST_2</code>.
+
+
+<h4>Transitive Closure</h4>
+<p>The transitive property simply says that if A = B, then B = C.
+Similarly, in a BURM, if a node can satisfy a particular state, 
+then there may exist a set of states that are "equivalent" to
+the primary state.
+For example, an <code>int</code> state can obviously also 
+satisfy a <code>long</code> state.
+
+<p>
+Transitive closures (also known as "simple transformation rules")
+are programmed into a JBurg specification using this synatax:
+<pre><code>
+<i>goal_state</i> = <i>original_state</i>;
+</code>
+For example,
+<code>
+    long = int;
+</code>
+</pre>
+
+<h4>Complex Transformation Rules</h4>
+Now consider the problem of transforming an int into an object.
+"int," in our hypothetical specification, is a goal state, not
+a node, so we cannot write a pattern-matching rule; and there
+isn't any way that the JVM can automatically convert an int into
+an object, so we can't write a transitive closure.
+We need some way to transform the int into an object.
+<p>One way to do this would be in inject CAST nodes into the
+tree in a semantic analysis pass; but JBurg's BURMs can also
+use "complex transformation" rules to do this directly.
+
+<p>An example of a complex transformation:
+<pre><code>
+<font color="darkGreen">/*
+ *  To get an object from an int we must construct an Integer.
+ */</font>
+object_value = integer_value : 5
+{
+	<font color="darkGreen">//  Construct an Integer.</font>
+	InstructionList il = integer_value;
+
+	<font color="darkGreen">//  cp is the BCEL constant pool generator for this class.</font>
+	int classIdx = cp.addClass ( "java/lang/Integer" );
+
+	<font color="darkGreen">//  Prepend the new and dup instructions before the int value.</font>
+	InstructionHandle front = il.insert ( new NEW(classIdx) );
+	il.append ( front, new DUP() );
+
+	<font color="darkGreen">//  Now call <init> to initialize the Integer.</font>
+	il.append ( new INVOKESPECIAL ( cp.addMethodref ( "java.lang.Integer", "<init>", "(I)V" ) ) );
+
+	return il;
+}
+</code></pre>
+
+<h5>Non-Transitive Nature of Complex Transformations</h5>
+<p>The <i>transitive</i> property of algebra says that if 
+<code>A = B</code>,
+and
+<code>B = C</code>,
+then
+<code>A = C</code>.
+(Note that it does not say that
+<code>C = A</code>,
+or even that 
+<code>C = B</code>;
+that's the <i>symmetric</i>
+property).
+For example, <code>int = byte</code> and <code>long = int</code>
+works correctly according to the transitive property; machine
+architectures are set up to widen primitive arithmetic values
+without intervention at the instruction level.
+
+<p>Complex transformation rules do not satisfy the transitive property.
+Consider 
+<dir>
+<code>Object = int { /* create Integer */ }</code>
+<br>
+<code>String = Object { /* call Object.toString() */ }</code>;
+</dir>
+If we considered these states to be transitive, we would
+generate code that tried to construct a string by calling
+an int's toString() method.
+A JVM would reject this class with a verifier error 
+(there's an int on the top of the stack, and we're trying to
+call a method?  What's <b>that</b> all about?) and an analogous situtation in a C++
+program would result in a segmentation fault, if the programmer were lucky.
+
+<p>Complex transformation rules inject additional information into the emitted
+code: the logic necessary to construct an Integer from an int, and to call the
+Integer's toString() method to obtain a String.
+The order in which these transformations occur is important.
+
+<h6>Antecdedent States</h6>
+There is a principle similar to the principle of optimality at work
+in a series of complex transformations: 
+the transformation from Object to String does not need to know how the
+Object is constructed, it only needs to know that this stage must 
+be in the Object state before it can transform the stage into the String state.
+More generally, any state in a stage may have a single <i>antecedent state</i>;
+the antecedent state may itself have an antecedent state, and so on, but the
+antecedent states cannot form a loop, or the reducer would not halt.
+
+<dir><b>TODO:</b>Needs a formal proof and search of relevant literature
+	for similar concepts.</dir>
+
+<h6>Example of Complex Transformation Rules and Antecedent States</h6>
+<!-- FIXME: more explanations -->
+Again, let's work with the rules that convert an int to a String
+(assuming that other parts of the compiler have verified that this
+operation makes sense to the language being compiled):
+<dir><pre>
+<code>int = INTEGER_LITERAL(void) { return new LDC(<i>literal</i>); }</code>
+<code>Object = int { /* create Integer(int) */ }</code>
+<br>
+<code>String = Object { /* call Object.toString() */ }</code>;
+</pre></dir>
+
+The String state notes that its antecedent is Object, and the Object state
+notes that its antecedent is int; int has no antecedents.
+If the generated BURM's reducer decides to produce a string from this
+stage, it will first "reduce" the int state and emit an LDC instruction;
+it will then "reduce" the Object state and emit code that constructs an
+Integer from the int that the LDC instruction leaves on the stack;
+finally, the reducer reduces the String state and calls the Integer's
+toString() method.
+
+<a name="ReturnType">
+
+<h4>Relationship Between States and ReturnType</h4>
+
+<p>Our constant-folding reductions have a &quot;natural&quot; type of Integer;
+<code>1+1</code> should result in <code>2</code>.
+Most of the other reductions reduce to Java bytecode, but a
+<code>procedure</code> reduction could reduce to a BCEL Method object.
+
+<p>JBurg allows a state to specify a specific return type; for example, the
+<code>constant_int</code> state's return type is Integer:
+<xmp>
+ReturnType constant_int = Integer;
+</xmp>
+
+
+<p>The default return type can be specified for the common case where a large
+majority of the states all use the same return type (e.g., InstructionList in
+the Falcon code emitter):
+<xmp>
+ReturnType InstructionList;
+</xmp>
+
+
+<h3>Dynamic Programming Tutorial</h3>
+<p>
+This <a href="http://mat.gsia.cmu.edu/classes/dynamic/dynamic.html">tutorial</a> 
+is a more in-depth introduction to the theory of dynamic programming.
+
+<p>
+Compare the tasks necessary to generate code to the
+<a href="http://mat.gsia.cmu.edu/classes/dynamic/node4.html#SECTION00040000000000000000"><i>Common Characteristics</i></a>
+of a dynamic programming problem, as noted in the tutorial:
+
+<ol>
+	<li>The problem can be divided into <i>stages</i> with a decision required at each stage. 
+	<br>JBurg: Each level of the tree forms a stage.
+
+	<p><li>Each stage has a number of <i>states</i> associated with it. 
+	<br>JBurg: The states are the possible code generation sequences that the emitter might emit.
+
+    <p><li>The decision at one stage transforms one state into a state in the next stage. 
+	<br>JBurg: The stages and states model the information flow in the emitted code; when the emitted code runs,
+	it will literally transform states as it performs its computations.
+
+	<p><li>Given the current state, the optimal decision for each of the remaining states 
+	does not depend on the previous states or decisions. 
+	<br>JBurg: This is the <i>Principle of Optimality</i>
+
+	<p><li>There exists a recursive relationship that identifies the optimal decision for stage j, 
+	given that stage j+1 has already been solved.
+	<br>JBurg: The tree structure forms a natural recursive relationship.  Remember that we are working from the bottom up, so stage j+1 solves the problem of emitting
+	code for a node's children.
+
+	<p><li>The final stage must be solvable by itself. 
+	<br>JBurg: The leaf nodes of the tree are recognized by NODE_TYPE(void) patterns.
+</ol>
+
+<hr>
+<h3>The Internals of the generated BURM</h3>
+<p><i>TBD -- mention the label-reduce sequence, transitive closure in the labeller, antecedents, subgoals, minimum-cost goalseekers in the reducer, and the stack that builds up the reduced results.
+
+<!-- Piwik -->
+<script type="text/javascript">
+var pkBaseURL = (("https:" == document.location.protocol) ? "https://sourceforge.net/apps/piwik/jburg/" : "http://sourceforge.net/apps/piwik/jburg/");
+document.write(unescape("%3Cscript src='" + pkBaseURL + "piwik.js' type='text/javascript'%3E%3C/script%3E"));
+</script><script type="text/javascript">
+try {
+var piwikTracker = Piwik.getTracker(pkBaseURL + "piwik.php", 1);
+piwikTracker.trackPageView();
+piwikTracker.enableLinkTracking();
+} catch( err ) {}
+</script><noscript><p><img src="http://sourceforge.net/apps/piwik/jburg/piwik.php?idsite=1" style="border:0" alt=""/></p></noscript>
+<!-- End Piwik Tag -->
+

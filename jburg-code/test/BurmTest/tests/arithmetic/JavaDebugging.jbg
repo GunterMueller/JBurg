@@ -1,0 +1,27 @@
+@Implements burmTest.ArithmeticOpcodes;
+
+@INodeType  burmTest.TestINode;
+@ReturnType Integer;
+
+@Header
+{
+    import java.util.Vector;
+    @SuppressWarnings("unchecked")
+}
+
+@ErrorHandler
+{
+    System.err.printf("Java default error handler succeeded.\n");
+    System.exit(0);
+}
+
+expression=ADD(expression lhs, expression r): 1
+{
+    return lhs.intValue() + r.intValue();
+}
+
+zort = INT(void): 1
+{
+    return Integer.parseInt(#zort.getUserObject().toString());
+}
+

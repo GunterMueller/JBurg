@@ -1,0 +1,12 @@
+<BurmTest burm="ExplicitReducerTreeParser" expectedResult="3">
+
+    <Opcodes class="burmTest.ArithmeticOpcodes"/>
+    <grammar file="tests/arithmetic/ExplicitReducer.jbg"/>
+    <javaSupportFiles srcdir="tests/arithmetic/supportFiles" includes="ExplicitReducer.java"/>
+
+    <Node opcode="ADD">
+        <Node opcode="INT" userObject="1"/>
+        <Node opcode="INT" userObject="2"/>
+    </Node>
+
+</BurmTest>

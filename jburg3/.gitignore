@@ -1,0 +1,8 @@
+**.swp
+**.swo
+**/classes
+**/gensrc
+lib
+**/burmdump
+**/.DS_Store
+jburgDebugger.properties

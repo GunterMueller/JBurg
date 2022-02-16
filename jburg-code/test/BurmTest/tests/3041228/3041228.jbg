@@ -1,0 +1,15 @@
+@include "../arithmetic/IntegerArithmetic.jbg"
+
+expression = ADD(PAREN(expression operands+)): 0
+{
+
+    int result = 0;
+
+    for ( Integer i: (java.util.Vector<Integer>)operands )
+    {
+        System.out.println("i is " + i);
+        result += i;
+    }
+
+    return result;
+}

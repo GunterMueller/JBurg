@@ -1,0 +1,222 @@
+/*
+ * A code generator for a simple language,
+ * with declarations of a homogenous int type,
+ * assignment statements, a "print" statement,
+ * and very simple arithmetic (integer constants
+ * and integer addition).
+ */
+@package jburg.tutorial.first;
+@Extends BURMBase;
+
+
+/* Declarations copied verbatim into the class @Header.  */
+@Header {
+    import java.util.ArrayList;
+    import java.util.List;
+
+    import org.antlr.runtime.tree.*;
+    import org.antlr.stringtemplate.*;
+
+    import jburg.tutorial.common.BURMBase;
+    import jburg.tutorial.common.TemplateManager;
+
+    // TokenTypes is a class generated from ANTLR's
+    // tokens file; these constants are the "opcodes"
+    // of the ANTLR-generated AST.
+    import static jburg.tutorial.first.TokenTypes.*;
+}
+
+/* Set up the interface between the tree parser
+ * and the AST; JBurg has builtin adapters for
+ * ANTLR3 (and ANTLR2) node types.
+ */
+@INodeType CommonTree;
+@INodeAdapter jburg.burg.inode.Antlr3JavaAdapter;
+
+/* Specify the return type of each goal state.
+ * For most of the goal states in this code generator
+ * grammar, the return type is of no significance,
+ * because the StringTemplate API works on Objects.
+ * The return type of intConstant is Integer so we
+ * could do constant folding, and the return type
+ * of name is String because it's a natural representation
+ * of the simple names in this language.
+ */
+@ReturnType Object;
+@ReturnType intConstant = Integer;
+@ReturnType name = String;
+
+/* Code copied into the generated tree parser/code generator
+ * class body.  It contains semantic analysis code necessary
+ * to generate valid assembly language, and a convenience
+ * interface over the StringTemplateGroup that contains the
+ * assembly language constructs.
+ */
+@Members
+{
+    /**
+     * Back end: StringTemplate manager.
+     */
+    private TemplateManager templateManager = new TemplateManager("templates", "MIPS");
+
+    /**
+     * Stack management: since this compiler only handles int values,
+     * its locals are always one word long. The stack manager is a
+     * simple list of names, and assumes they're all one word long.
+     */
+    private List<String> localVariables = new ArrayList<String>();
+
+    /**
+     * Declare a local variable.
+     * @param varName the variable's name.
+     * @throws IllegalStateException if
+     * the variable is already declared.
+     */
+    private void declareVariable(String varName)
+    {
+        if ( localVariables.contains(varName) )
+            throw new IllegalStateException(String.format("Reference to undefined name %s",varName));
+        localVariables.add(varName);
+    }
+
+    /**
+     * Get the offset of a local variable.
+     * @param varName the variable's name.
+     * @return the corresponding offset.
+     * @throws IllegalStateException if the variable
+     * name is not declared.
+     */
+    private int offsetOf(String varName)
+    {
+        int index = localVariables.indexOf(varName);
+        if ( index >= 0 )
+            return index * sizeOfInt;
+        else
+            throw new IllegalStateException(String.format("Reference to undefined name %s",varName));
+    }
+
+    /** Size of an int variable in this system. */
+    public static final int sizeOfInt = 4;
+
+    /**
+     * Register allocation: next available temp register.
+     * Note that no register spill facility is available,
+     * so computations can't be very deeply nested or the
+     * compiler will exhaust its supply of temps.
+     */
+    int nextTemp = 0;
+
+    /**
+     * Register allocation:
+     * Allocate a temporary register for a computation.
+     * @param template the template that requires a temp register.
+     * The template must refer to this register as &lt;register&gt;.
+     * @return the template.
+     */
+    private StringTemplate allocateTemp(StringTemplate template)
+    {
+        if ( nextTemp < 7 )
+            template.setAttribute("register", String.format("$t%d", nextTemp++));
+        else
+            throw new IllegalStateException("out of temporary registers.");
+
+        return template;
+    }
+
+    /**
+     * Register allocation: reset the temp register.
+     * @param template a template (typically a statement)
+     * that guarantees no temps are live past its boundaries.
+     * @return the template.
+     */
+    private StringTemplate resetTemps(StringTemplate template)
+    {
+        this.nextTemp = 0;
+        return template;
+    }
+}
+
+/*
+ * Program-level goal: a program is a
+ * COMPILATION_UNIT node with zero or more
+ * children that can be reduced to statements.
+ */
+compilationUnit = COMPILATION_UNIT(statement statements*): 1
+{
+    return templateManager.getTemplate(
+        "compilationUnit",
+        "textSegmentItems", templateManager.getTemplate(
+            "simplifiedCompilationUnit",
+            "textSegmentItems", statements
+        )
+    );
+}
+
+/*
+ * Statement-level goals:
+ * declarations
+ * assignment statements
+ * print pseudo-statement
+ */
+
+// Declare a local variable.
+// This rule returns null, because it allocates
+// stack space for the local as a side effect.
+statement = INT_TYPE(name name): 1
+{
+    this.declareVariable(name);
+    return null;
+}
+
+// Assign a value to a local variable.
+statement = EQUALS(name lvalue, intExpression rvalue): 1
+{
+    return resetTemps(templateManager.getTemplate("storeLocal", "offset", offsetOf(lvalue), "rvalue", rvalue));
+}
+
+statement = PRINT(intExpression expr): 1
+{
+    return resetTemps(templateManager.getTemplate("printInteger", "expr", expr));
+}
+
+/*
+ * Expression-level goals:
+ * Arithmetic operators
+ * conversion from name to intExpression via load
+ * conversion from intConstant to intExpression via li
+ */
+intExpression = PLUS(intExpression lhs, intExpression rhs):1
+{
+    return allocateTemp(templateManager.getTemplate("add", "lhs", lhs, "rhs", rhs));
+}
+
+// This is a general transformation rule; instead of a pattern match,
+// such as PLUS(intExpression lhs, intExpression rhs), it converts the
+// Integer result of a pattern match into an intExpression in a register
+// by emitting a load immediate instruction.
+// Transformation rules can be chained to progressively transform a subtree.
+intExpression = intConstant: 1
+{
+    return allocateTemp(templateManager.getTemplate("li", "expr", intConstant));
+}
+
+// This general transformation rule converts a pattern-match result,
+// a name, into an int expression (a value in a register) by emitting
+// a load instruction.
+intExpression = name: 1
+{
+    return allocateTemp(templateManager.getTemplate("loadLocal", "offset", offsetOf(name)));
+}
+
+// These final two rules are pattern match rules, but the (void) subtree list
+// means that these patterns only match nodes that have no children; these are
+// the leaves of the tree, which in this language are identifiers and constants.
+name = ID(void): 1
+{
+    return #name.getText();
+}
+
+intConstant = INT_LITERAL(void): 1
+{
+    return Integer.parseInt(#intConstant.getText());
+}

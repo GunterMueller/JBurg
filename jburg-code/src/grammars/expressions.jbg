@@ -1,0 +1,71 @@
+/*
+ *  This JBurg specification translates JBurg expressions
+ *  into platform-specific code fragments.
+ */
+
+@package jburg.burg;
+@Implements JBurgTokenTypes;
+@Language java;
+
+@Header
+{
+    import jburg.parser.JBurgTokenTypes;
+    import org.antlr.stringtemplate.StringTemplate;
+
+    import jburg.emitter.EmitLang;
+}
+
+/*
+ *  @Pattern nodes encode into fragments of the generated BURM's
+ *  pattern-matching logic.  These fragments are assembled
+ *  bottom-up into a pattern matcher.
+ */
+@ReturnType StringTemplate;
+@INodeType antlr.collections.AST;
+
+// Header block
+{
+    /*
+     *  The active emitter's template group.
+     */
+     private EmitLang codeEmitter;
+
+     public void setCodeEmitter(EmitLang codeEmitter)
+     {
+         this.codeEmitter = codeEmitter;
+     }
+}
+
+/*
+ * Primary expressions
+ */
+expression = IDENTIFIER(void): 1
+{
+    return this.codeEmitter.getTemplate("identifier", "id", #expression.getText());
+}
+
+expression = INT(void): 1
+{
+    return this.codeEmitter.getTemplate("numericLiteral", "literal", #expression.getText());
+}
+
+expression = PROCEDURE_CALL(expression stem, expression plist*): 1
+{
+    return this.codeEmitter.getTemplate(
+        "procedureCall",
+        "procedureName", stem,
+        "parameters", this.codeEmitter.getTemplate(
+            "procedureActualParameters",
+            "parameter", plist
+        )
+    );
+}
+
+expression = MEMBER_ACCESS(expression stem, expression member): 1
+{
+    return this.codeEmitter.getTemplate(
+        "memberAccess",
+        "stem", stem,
+        "member", member
+    );
+}

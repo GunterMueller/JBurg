@@ -1,0 +1,115 @@
+<html>
+<title>Theory of Antecedent States in Dynamic Programming</title>
+<body>
+
+<h3>Definition</h3>
+
+<h3>Proof</h3>
+Given: At stage <i>S</i>, state <i>s1</i> has antecedent state <i>a1</i>.
+<p>To prove: This is equivalent to the rule <i>s1</i> = <i>S'</i>(<i>a1</i>), 
+<i>S'</i> being a synthetic node inserted into the input tree.
+<p> 
+A concrete example makes the formal statement more comprehensible.  Suppose we have the rules:
+<pre><dir><code>
+int = INTEGER_LITERAL { /* Use LDC, BIPUSH, ICONST */ }
+long = int; // No code necessary, the JVM will widen the int to a long
+object = int { /* new Integer(int) */ }
+string = object { /* object.toString() */ }
+</code></dir></pre>
+<ul>
+	<li>The stages of a BURM transformation are the nodes in the tree, 
+	    so S is the INTEGER_LITERAL node.
+	<li>The int state is produced directly by pattern-matching <i>S</i> 
+	and has no antecedents.
+	<li>The long state is a transitive closure (INTEGER_LITERAL = int = long) 
+	and has no antecedents, long being considered identical to int.
+	<li>The object state has antecedent state int.
+	<li>The string state has antecedent state object.
+</ul>
+A hypothetical previous compiler pass might have inserted cast nodes to accomplish this transformation.  
+The A-&gt;B syntax means "Node A has child node B." 
+<dir><code>
+TO_STRING-&gt;TO_OBJECT-&gt;INTEGER_LITERAL
+</code></dir>
+The corresponding rules would be:
+<dir><pre><code>
+int = INTEGER_LITERAL { /* as before }
+object = TO_OBJECT(int) { /* new Integer(int) */ }
+string = TO_STRING(object) { /* object.toString() */ }
+</code></pre></dir>
+Our task is to demonstrate that antecedent states are equivalent to this mutated tree and the novel BURM's rules.
+<p>
+What does it mean to be "equivalent" in the context of a BURM?  
+<ol>
+	<li>The labeler must recognize the same sequence of rules and compute the same costs.
+	<li>The reducer must run the same rules, in the same order.
+</ol>
+<ol>
+	<li>Cost computations: assume that the int rule has cost 1, the object=int rule has cost 5, and the string = object rule has cost 2.  These costs would be assigned to the corresponding cast nodes: TO_OBJECT(int) costs 5, TO_STRING(object) costs 2, INTEGER_LITERAL still costs 1.  The labeler computes a state/stage pair's cost to be its intrinsic cost plus the cost of its operand(s): the cost of the TO_OBJECT stage is 6 (its intrinsic cost, 5, plus the unit cost of its int operand), and the cost of the string stage is 8 (its intrinsic cost, 2, plus the cost (6) of its object operand).
+	<p>The costs of the antecedent rules add up in the same way: the cost of the int state is 1, the cost of the object state is 5 + 1, and the cost of the string state is 2 + 6.  Note that each state only needs to obtain the (aggregate) cost of its immediate antecedent.
+
+	<p><li>
+	In order for the labeler to find all possible antecedent-dependent 
+	closures, the BURG must construct a partial ordering of the states 
+	that have antecedents and emit the stage's closure computations 
+	in the correct order.
+	<p>The partial order starts with a state, sPrime, that has no antecedents.  
+	There must be at least one such state per stage.
+	Any states whose antecedent is sPrime are next, 
+	then their antecedents, and so on.
+	<p>
+	This is the way that the BURM's labler works; it begins with a
+	pattern-matching rule, which has no antecedents.
+	Then it finds transformational rules that depend on that primary
+	state.
+	For any transformational rule that may run, the labeler 
+	finds additional transformational rules, sequentially constructing
+	a set of orderings of the set of states.
+	<p>This set is ambiguous, in that it may contain cycles; 
+	the BURM guards against cycles by using the 
+	<a href="http://www.ma.umist.ac.uk/avb/Pigeon.html">pigeonhole principle</a>
+	to assert that there are no more than <i>k-1</i> possible antecedents
+	at any stage; if the reducer requests additional antecedent states, then
+	the ordering contains cycles.
+	<p><strong>TODO:</strong> The labeler can detect these cycles as well,
+	and it should, since it has more information available for diagnostics.
+
+	<p><li>Reduce-time behavior requires that we run the correct rules 
+	in the correct order.  Again, the proof is constructive.  
+	Using our example states and rules:
+	<p>The string state, which is our overall goal, notes 
+	that its antecedent is object.  
+	The string rule goes onto a rule stack, and the reducer investigates 
+	object's antecedents.
+	<p>The object state's antecedent is int.  
+	The object goes onto the rule stack, and the reducer 
+	investigates int's antecedents.
+	<p>int has no antecedent, so the reducer "reduces" int by running its rule, 
+	pops the object rule and "reduces," and finally pops the string rule and 
+	"reduces" to the goal state.
+</ol>
+<h3>Corollary</h3>
+ 
+Given stage <i>S</i> with state <i>s1</i>, antecedent <i>a1</i>.
+To prove: s1's antecedent relationship with a1 does not depend on whether a1 has antecedents (as long as the stage's states can be assembled into a partial ordering).
+ 
+<p>
+This is nothing more than an observation that the Principle of Optimality, 
+a basic Dynamic Programming concept, holds for antecedent states because 
+they're equivalent to a mutated tree, as demonstrated above.
+ 
+</body>
+</html>
+<!-- Piwik -->
+<script type="text/javascript">
+var pkBaseURL = (("https:" == document.location.protocol) ? "https://sourceforge.net/apps/piwik/jburg/" : "http://sourceforge.net/apps/piwik/jburg/");
+document.write(unescape("%3Cscript src='" + pkBaseURL + "piwik.js' type='text/javascript'%3E%3C/script%3E"));
+</script><script type="text/javascript">
+try {
+var piwikTracker = Piwik.getTracker(pkBaseURL + "piwik.php", 1);
+piwikTracker.trackPageView();
+piwikTracker.enableLinkTracking();
+} catch( err ) {}
+</script><noscript><p><img src="http://sourceforge.net/apps/piwik/jburg/piwik.php?idsite=1" style="border:0" alt=""/></p></noscript>
+<!-- End Piwik Tag -->
+

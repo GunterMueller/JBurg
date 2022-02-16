@@ -1,0 +1,11 @@
+<BurmTest burm="ErrorTrapCosts" expectedResult="2">
+
+    <Opcodes class="burmTest.ArithmeticOpcodes"/>
+    <grammar file="tests/arithmetic/ErrorTrapCosts.jbg"/>
+
+    <Node opcode="ADD">
+        <Node opcode="INT" userObject="1"/>
+        <Node opcode="INT" userObject="1"/>
+    </Node>
+
+</BurmTest>

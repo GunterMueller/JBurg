@@ -1,0 +1,147 @@
+/*
+ *  This BURM emits pseudo-MIPS assembly language
+ *  for a simple programming language.
+ */
+
+header
+{
+    import org.antlr.runtime.tree.Tree;
+}
+
+/*
+ *  This compiler uses an ANTLR3 front end.
+ */
+INodeType org.antlr.runtime.tree.Tree;
+
+ReturnType Object;
+
+/*
+ *  The register allocator for this procedure,
+ *  supplied by the caller.
+ */
+BURMProperty RegisterAllocator regAlloc;
+BURMProperty MipsAsmWriter mipsEmitter;
+
+
+/*
+ *  Recognize an assignment statement.
+ */
+stmt = ExprParser.EQUALS(reg lvalue, reg rvalue): 1
+{
+    mipsEmitter.printAddressInstruction("sw", rvalue, lvalue);
+	return null;
+}
+
+/*
+ *  Recognize an expression at statment level
+ *  (typically a function call).
+ */
+stmt = ExprParser.EVAL_EXPR(reg already_computed): 0
+{
+    //  Nothing to do.
+	return null;
+}
+
+/*
+ *  Recogize a PLUS node, add up its operands, and return the result.
+ */
+reg = ExprParser.PLUS(reg arg1, reg arg2): 1
+{
+    Object dst = regAlloc.allocateRegister(#reg);
+    mipsEmitter.printInstruction ( "add", dst, arg1, arg2);
+	return dst;
+}
+
+/*
+ *  Recogize a binary MINUS node, subtract its operands, and return the result.
+ */
+reg = ExprParser.MINUS(reg arg1, reg arg2): 1
+{
+    Object dst = regAlloc.allocateRegister(#reg);
+    mipsEmitter.printInstruction ( "sub", dst, arg1, arg2);
+	return dst;
+}
+
+/*
+ *  Recogize a STAR (multiply) node, multiply its operands, 
+ *  and return the result.
+ */
+reg = ExprParser.STAR(reg arg1, reg arg2): 1
+{
+    Object dst = regAlloc.allocateRegister(#reg);
+    mipsEmitter.printInstruction ( "mul", dst, arg1, arg2);
+    return dst;
+}
+
+
+/*
+ *  Unary minus: the MIPS doesn't have an arithmetic
+ *  negation, so subtract the unary operator's argument
+ *  from register 0, which is always zero.
+ */
+reg = ExprParser.MINUS(reg arg1):1
+{
+    Object dst = regAlloc.allocateRegister(#reg);
+    mipsEmitter.printInstruction ( "sub", dst, "$0", arg1);
+    return dst;
+}
+
+
+/*
+ *  Load a constant into a register.
+ */
+reg = constant : 1
+{
+    Object dst = regAlloc.allocateRegister(#reg);
+	mipsEmitter.printInstruction("li", dst, #reg, null);
+	return dst;
+}
+
+/*
+ *  Recognize negation of a constant, which can
+ *  be handled by simply passing the negation
+ *  along to the instruction that generates
+ *  the constant in a register, without a
+ *  second sub instruction.
+ */
+reg = ExprParser.MINUS(constant const_value) : 1
+{
+    Object dst = regAlloc.allocateRegister(#reg);
+	mipsEmitter.printInstruction("la", dst, "-" + const_value.toString(), null);
+	return dst;
+}
+
+/*
+ *  Recognize an integer literal, and return its value.
+ */
+constant = ExprParser.INTEGER_LITERAL(void) : 0
+{
+    return #constant.getText();
+}
+
+
+/*
+ *  Load the address of a storage location -- an lvalue.
+ */
+reg = ExprParser.ID(void): 1
+{
+    Object dst = regAlloc.allocateRegister(#reg);
+	//  TODO: All data in this simple language 
+	//  is static.  A more complex language will
+	//  need an instruction stack.
+    mipsEmitter.printInstruction ( "la", dst, #reg, null);
+    return dst;
+}
+
+/*
+ *  Recognize the synthetic node INDIR,
+ *  which dereferences an address and
+ *  loads the contents of the address
+ *  into a register.
+ */
+reg = ExprParser.INDIR(reg address): 1
+{
+    Object dst = regAlloc.allocateRegister(#reg);
+	mipsEmitter.printAddressInstruction("lw", dst, address);
+    return dst;
+}

@@ -1,0 +1,342 @@
+<project name="JBurgTest" default="MAT" basedir=".">
+
+    <target name="init">
+        <property environment="env"/>
+        <property file="../../build.properties"/>
+
+        <property name="jburg.jar" value="../../lib/jburg.jar"/>
+        <property name="jburg.main.class" value="jburg.burg.JBurgMain" />
+        <property name="default.main.class" value="burmTest.BurmTest"/>
+
+        <!-- Don't run too many tests in parallel, the compilations
+             will cause thrashing. Reset in build.properties.
+        -->
+        <property name="parallel.threadCount" value="5"/>
+
+        <!-- Defaulted false until the C++ build properly supports debug reducers. -->
+        <property name="jburg.debug.reducer" value="false"/>
+
+        <property name="parenthesesEquality" value=""/>
+
+        <property name="javascript.engine" value="${env.V8}"/>
+
+
+        <!-- Prep the build environment -->
+        <mkdir dir="classes"/>
+
+    </target>
+
+    <target name="clean">
+        <delete dir="classes"/>
+        <delete dir="gensrc"/>
+    </target>
+
+    <!--  Run an individual test. -->
+    <target name="test" depends="init,test_banner,testBody"/>
+    <target name="testBody" depends="get_build_info,compile_support,generate_burm,compile_test,run_test"/>
+    <target name="perftest" depends="init,test_banner,prep_perf_test,run_test"/>
+    <target name="retest" depends="init,get_build_info,compile_test,run_test"/>
+    <target name="compile_test" depends="compile_java,compile_main,build_cpp"/>
+    <target name="run_test" depends="run_java,run_cpp,run_javascript"/>
+
+    <!--  Print a test banner unless the test is running quietly. -->
+    <target name="test_banner">
+        <echo level="info" message="Running test: ${burm.test.file}"/>
+    </target>
+
+    <!-- Extract build information from the test file. -->
+    <target name="get_build_info">
+
+        <fail message="Specify a test file using the burm.test.file property." unless="burm.test.file"/>
+        <xmlproperty file="${burm.test.file}"/>
+
+        <!-- Note some older test files don't specify the grammar
+             in the file, but on the command line.  -->
+        <fail message="${burm.test.file} does not specify a grammar." unless="BurmTest.grammar"/>
+        <property name="jbg.file" value="${BurmTest.grammar(file)}"/>
+
+        <!-- cpp build sequence -->
+        <condition property="test.target.cpp">
+            <equals arg1="${BurmTest.language(value)}" arg2="cpp"/>
+        </condition>
+
+        <condition property="emitter.file" value="${BurmTest(burm)}.h">
+            <istrue value="${test.target.cpp}"/>
+        </condition>
+
+        <!-- Javascript build sequence -->
+        <condition property="test.target.javascript">
+            <equals arg1="${BurmTest.language(value)}" arg2="javascript"/>
+        </condition>
+
+        <condition property="emitter.file" value="${BurmTest(burm)}.js">
+            <istrue value="${test.target.javascript}"/>
+        </condition>
+
+        <!-- Java build sequence by default. -->
+        <condition property="test.target.java">
+            <not>
+                <or>
+                    <istrue value="${test.target.cpp}"/>
+                    <istrue value="${test.target.javascript}"/>
+                </or>
+            </not>
+        </condition>
+
+        <condition property="emitter.file" value="${BurmTest(burm)}.java">
+            <istrue value="${test.target.java}"/>
+        </condition>
+
+        <condition property="build.main.class">
+            <isset property="BurmTest.mainClass"/>
+        </condition>
+    </target>
+
+    <target name="prep_perf_test">
+
+        <!-- Java build sequence by default. -->
+        <condition property="test.target.java">
+            <equals arg1="java" arg2="java"/>
+        </condition>
+
+        <property name="emitter.file" value="PerformanceTestReducer.java"/>
+
+    </target>
+
+    <!-- Compile support files used by the BURG while building the BURM.  -->
+    <target name="compile_support" depends="init,get_build_info" if="BurmTest.javaSupportFiles(srcdir)">
+       <javac srcdir="${BurmTest.javaSupportFiles(srcdir)}" destdir="classes" includes="${BurmTest.javaSupportFiles(includes)}">
+            <classpath>
+                <pathelement path="${jburg.jar}"/>
+				<pathelement path="classes"/>
+            </classpath>
+       </javac>
+    </target>
+
+    <!--  Generate the BURM; platform-independent -->
+    <target name="generate_burm">
+
+        <java classname="${jburg.main.class}" fork="yes" failonerror="yes" >
+			<arg value="${jbg.file}" />
+            <arg value="-outputdir"/>
+            <arg value="gensrc"/>
+			<arg value="-outputfile"/>                        
+			<arg value="${emitter.file}"/>
+			<arg value="-debug"/>
+            <arg value="${jburg.debug.reducer}"/>
+			<arg value="-logInfo"/>
+			<arg value="false"/>
+			<arg value="-logWarning"/>
+			<arg value="false"/>
+            <jvmarg value="-ea"/>
+			<classpath>
+				<pathelement path="${jburg.jar}"/>
+				<pathelement path="classes"/>
+				<pathelement location="${antlr.jar}"/>
+			</classpath>
+		</java>
+    </target>
+
+    <!--  Java compile/build sequence. -->
+    <target name="compile_java_common">
+        <javac srcdir="src" destdir="classes" includes="**/*.java" debug="true"/>
+    </target>
+
+    <target name="compile_java" if="test.target.java">
+        <javac srcdir="gensrc" destdir="classes" includes="${emitter.file}" debug="true"/>
+    </target>
+
+    <!-- Compile main class after the BURM and all the platform classes are compiled. -->
+    <target name="compile_main" if="build.main.class">
+        <property name="test.main.class" value="${BurmTest.mainClass(class)}"/>
+        <javac srcdir="${BurmTest.mainClass(srcdir)}" destdir="classes" includes="${BurmTest.mainClass(includes)}" debug="true">
+            <classpath>
+                <pathelement path="classes"/>
+            </classpath>
+        </javac>
+    </target>
+
+    <!--  Java run sequence. -->
+    <target name="run_java" if="test.target.java">
+        <!--  test.main.class might have been set explicitly. -->
+        <property name="test.main.class" value="${default.main.class}"/>
+
+        <java classname="${test.main.class}" fork="yes" failonerror="yes">
+            <arg value="${burm.test.file}"/>
+            <jvmarg value="-ea"/>
+            <jvmarg value="-Xmx2048M"/>
+			<classpath>
+				<pathelement path="classes"/>
+			</classpath>
+        </java>
+
+    </target>
+
+    <!--  C++ compile/build sequence. -->
+    <target name="build_cpp" if="test.target.cpp">
+        <exec executable="g++" failonerror="true">
+            <arg value="${BurmTest.cppsource(path)}"/>
+            <arg value="-g"/>
+            <arg value="${parenthesesEquality}"/>
+            <arg value="-Igensrc"/>
+            <arg value="-o"/>
+            <arg value="${BurmTest.executable(path)}"/>
+        </exec>
+    </target>
+
+    <!--  C++ run sequence. -->
+    <target name="run_cpp" if="test.target.cpp">
+        <exec executable="${BurmTest.executable(path)}" failonerror="true"/>
+    </target>
+
+    <target name="run_javascript" if="test.target.javascript">
+        <exec executable="${javascript.engine}" failonerror="true">
+            <arg value="gensrc/${emitter.file}"/>
+            <arg value="${BurmTest.jssource(path)}"/>
+        </exec>
+    </target>
+
+    <!-- Run the test suite. -->
+    <target name="MAT" depends="clean,init,compile_java_common">
+        <parallel threadCount="${parallel.threadCount}">
+            <antcall target="testBody">
+                <param name="jbg.file" value="tests/arithmetic/IntegerArithmetic.jbg"/> 
+                <param name="burm.test.file" value="tests/arithmetic/IntegerArithmeticTest.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/n-aryTest.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/n-aryTest2.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="jbg.file" value="tests/arithmetic/n-ary.jbg"/> 
+                <param name="burm.test.file" value="tests/arithmetic/n-aryPatternSingleOperand.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/nestedFixedArity.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/3041228/3041228.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/trailingNary.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/compoundNested.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="jburg.debug.reducer" value="true"/>
+                <param name="burm.test.file" value="tests/arithmetic/JavaDebugging.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/2999397/2999397.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/terminalPatterns.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/3074736/3074736.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/cpp/IntegerArithmeticTest.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/compoundNaryLast.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/include/TestParamSubsitution.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/SymbolicCosts.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/ExplicitReducer.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/Prologue.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/ManifestConstant.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/Closures.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/ExplicitNodeType.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/extends/Extend1.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/IntegerArithmeticExplicitCostFunction.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/NonterminalTypes.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/VolatileCosts.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/ErrorTrapCosts.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/AntecedentTree.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/cpp/IntegerArithmeticNaryTest.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="jburg.debug.reducer" value="true"/>
+                <param name="burm.test.file" value="tests/cpp/DebugModeTest.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/InlineINodeAdapter.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/AnnotationAccessor.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/cpp/Accessor.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/cpp/LabelTest.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/cpp/AccessorAndAll.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/ReducerNodeName.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/Wildcard.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/arithmetic/WildcardAccessor.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/cpp/Wildcard.xml"/>
+            </antcall>
+            <antcall target="testBody">
+                <param name="burm.test.file" value="tests/cpp/WildcardAccessor.xml"/>
+            </antcall>
+        </parallel>
+    </target>
+
+    <target name="cpp_test">
+        <antcall target="testBody">
+            <param name="burm.test.file" value="tests/cpp/IntegerArithmeticTest.xml"/>
+        </antcall>
+        <antcall target="testBody">
+            <param name="burm.test.file" value="tests/cpp/IntegerArithmeticNaryTest.xml"/>
+        </antcall>
+        <antcall target="testBody">
+            <param name="jburg.debug.reducer" value="true"/>
+            <param name="burm.test.file" value="tests/cpp/DebugModeTest.xml"/>
+        </antcall>
+    </target>
+
+    <target name="jar">
+        <ant dir="../.." target="jar"/>
+    </target>
+</project>

@@ -1,0 +1,31 @@
+BurmTest is a test harness that builds and hosts a BURM, builds a tree 
+as specified in the test config file, reduces the tree using the BURM,
+and checks the results.
+
+The format of the test file is:
+
+<!-- Top level element BurmTest, gives the BURM classname and expected result.  -->
+<BurmTest burm="Ina2TestEmitter" expectedResult="3">
+
+    <!-- Name of the interface that implements the opcodes for the tree, 
+        e.g., ADD, INT
+    -->
+    <Opcodes class="ArithmeticOpcodes"/>
+
+    <!--  BURM specification file, used by the build system -->
+    <grammar file="tests/arithmetic/IntegerArithmetic.jbg"/>
+
+    <!--  Java support files, used by the build system -->
+    <javaSupportFiles srcdir="tests/arithmetic/supportFiles" includes="Ina2Test.java"/>
+
+    <!--  The tree to feed to the BURM -->
+    <Node opcode="ADD">
+        <Node opcode="INT" userObject="1"/>
+        <Node opcode="INT" userObject="2"/>
+    </Node>
+
+</BurmTest>
+
+To run a test from the command line:
+
+ant -Dburm.test.file=<filename> test

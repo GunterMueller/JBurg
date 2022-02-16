@@ -1,0 +1,13 @@
+<BurmTest burm="AccessorAndAllTest" expectedResult="3">
+
+    <grammar file="tests/cpp/AccessorAndAll.jbg"/>
+    <language value="cpp"/>
+    <cppsource path="tests/cpp/AccessorAndAll.cpp"/>
+    <executable path="gensrc/AllocatorAndAll"/>
+
+    <Node opcode="ADD">
+        <Node opcode="INT" userObject="1"/>
+        <Node opcode="INT" userObject="2"/>
+    </Node>
+
+</BurmTest>

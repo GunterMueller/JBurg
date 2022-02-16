@@ -1,0 +1,20 @@
+@Implements burmTest.ArithmeticOpcodes;
+
+@INodeType  burmTest.TestINode;
+@ReturnType Integer;
+
+@Header
+{
+    import java.util.Vector;
+    @SuppressWarnings("unchecked")
+}
+
+expression=SUBSTITUTE_ADD(expression lhs, expression r): 1
+{
+    return lhs.#int# + r.#int#;
+}
+
+expression = SUBSTITUTE_INT: 1
+{
+    return Integer.parseInt(#expression.getUserObject().toString());
+}

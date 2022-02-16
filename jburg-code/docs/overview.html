@@ -1,0 +1,32 @@
+<h2><font color="#0000ff">J</font><font color="#e00000">B</font>urg: a Bottom-Up Rewrite Machine Generator for Java</h2>
+
+<p>
+A bottom-up rewrite machine is a compiler construction tool that is often used in the compiler's back end to convert a tree-structured representation of a program into machine code -- or, in Java's case, bytecode.
+
+<p>
+JBurg can also be used as a general-purpose dynamic programming engine.  
+JBurg is descended from <code>iburg</code>-class BURGs, described in 
+Fraser, Hanson, and Proebsting's paper,
+<a href="references.html">"Engineering a Simple, Efficient Code Generator Generator."</a>
+
+<p>
+JBurg brings similar O(N) minimum-cost tree rewriting capabilities to Java, 
+and also allows the programmer to specify transitions between non-terminal 
+states, that are significantly more powerful than iburg's transitive closures: 
+JBurg transformation rules allow the transformation to inject additional 
+program logic, which makes a JBurg specification more like a grammar 
+than like a list of pattern-matching rules.
+
+<!-- Piwik -->
+<script type="text/javascript">
+var pkBaseURL = (("https:" == document.location.protocol) ? "https://sourceforge.net/apps/piwik/jburg/" : "http://sourceforge.net/apps/piwik/jburg/");
+document.write(unescape("%3Cscript src='" + pkBaseURL + "piwik.js' type='text/javascript'%3E%3C/script%3E"));
+</script><script type="text/javascript">
+try {
+var piwikTracker = Piwik.getTracker(pkBaseURL + "piwik.php", 1);
+piwikTracker.trackPageView();
+piwikTracker.enableLinkTracking();
+} catch( err ) {}
+</script><noscript><p><img src="http://sourceforge.net/apps/piwik/jburg/piwik.php?idsite=1" style="border:0" alt=""/></p></noscript>
+<!-- End Piwik Tag -->
+

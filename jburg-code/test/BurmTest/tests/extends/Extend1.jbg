@@ -1,0 +1,24 @@
+/*
+ * Test a BURM that uses cost functions inherited from a base class.
+ */
+@Implements burmTest.ArithmeticOpcodes;
+@Extends BaseBURM;
+
+@INodeType  burmTest.TestINode;
+@ReturnType Integer;
+
+@Header
+{
+    import java.util.Vector;
+    @SuppressWarnings("unchecked")
+}
+
+expression=ADD(expression lhs, expression r): addCost()
+{
+    return lhs.intValue() + r.intValue();
+}
+
+expression = INT(void): intLiteralCost()
+{
+    return Integer.parseInt(#expression.getUserObject().toString());
+}

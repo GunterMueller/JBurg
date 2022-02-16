@@ -1,0 +1,11 @@
+<BurmTest burm="ExplicitNodeType" expectedResult="3">
+
+    <Opcodes class="burmTest.ArithmeticOpcodes"/>
+    <grammar file="tests/arithmetic/ExplicitNodeType.jbg"/>
+
+    <Node opcode="ADD">
+        <Node opcode="INT" nodeClass="burmTest.LiteralIntNode" userObject="1"/>
+        <Node opcode="INT" nodeClass="burmTest.LiteralIntNode" userObject="2"/>
+    </Node>
+
+</BurmTest>

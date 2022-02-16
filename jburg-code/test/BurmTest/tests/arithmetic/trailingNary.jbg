@@ -1,0 +1,11 @@
+@include "IntegerArithmetic.jbg"
+
+expression = ADD(expression one, expression two, expression rest+): 1
+{
+    int result = one + two;
+
+    for ( Integer i: (java.util.Vector<Integer>)rest)
+        result -= i;
+
+    return result;
+}

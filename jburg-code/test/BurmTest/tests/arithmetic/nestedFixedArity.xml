@@ -1,0 +1,18 @@
+<BurmTest burm="NestedFixedArity" expectedResult="5">
+
+    <Opcodes class="burmTest.ArithmeticOpcodes"/>
+    <grammar file="tests/arithmetic/nestedFixedArity.jbg"/>
+
+    <Node opcode="PAREN">
+        <Node opcode="PAREN">
+            <Node opcode="ADD">
+                <Node opcode="INT" userObject="1"/>
+                <Node opcode="INT" userObject="2"/>
+            </Node>
+        </Node>
+        <Node opcode="PAREN">
+            <Node opcode="INT" userObject="2"/>
+        </Node>
+    </Node>
+
+</BurmTest>

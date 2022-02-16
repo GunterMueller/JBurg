@@ -1,0 +1,128 @@
+/*
+ *  This JBurg specification recognizes JBurg pattern rules.
+ */
+
+@Package jburg.burg;
+@Implements JBurgTokenTypes;
+
+@Header
+{
+    import java.util.Set;
+    import java.util.Vector;
+    import jburg.parser.JBurgTokenTypes;
+}
+
+/*
+ *  @Pattern nodes encode into fragments of the generated BURM's
+ *  pattern-matching logic.  These fragments are assembled
+ *  bottom-up into a pattern matcher.
+ */
+@ReturnType JBurgPatternMatcher;
+
+@ReturnType simple_identifier = String;
+@ReturnType operand_list = Vector;
+
+@INodeType antlr.collections.AST;
+
+/*
+ *  Collect subgoal parameters here.
+ */
+@Property Vector<JBurgPatternMatcher> subgoals;
+
+@Property Vector<JBurgPatternMatcher> namedTerminals;
+
+/*
+ *  Highest-level goal is operator_specification.
+ */
+
+
+/*
+ * A simple pattern match against a terminal.
+ */
+operator_specification = TERMINAL_PATTERN( simple_identifier terminalID ): 1
+{
+    return JBurgPatternMatcher.matchOperator(terminalID);
+}
+
+/*
+ * A pattern match against terminal, with a name.
+ */
+operator_specification = TERMINAL_PATTERN( simple_identifier terminalID, simple_identifier terminal_name ): 1
+{
+    JBurgPatternMatcher result = JBurgPatternMatcher.matchOperator(terminalID);
+    result.setParameterData(null, terminal_name);
+
+    if (namedTerminals != null )
+        namedTerminals.add(result);
+
+    return result;
+}
+
+/*
+ *  An pattern match against the root of a subtree.
+ */
+operator_specification = OPERATOR_SPECIFICATION( simple_identifier operator, OPERAND_LIST( operand operands+ ) ): 1
+{
+    //  The presence of the operands node is checked by the cost computation
+	//  (if the second node cannot be used as operands, its cost is infinite),
+	//  so this recognizer need only check the operator.
+	JBurgPatternMatcher result = JBurgPatternMatcher.matchOperator(operator);
+	result.addAll( operands );
+
+	return result;
+}
+
+/*
+ *  Pattern matchers can embed additional levels of pattern matchers
+ *  to continue matching deeper into the subtree.
+ */
+operand = operator_specification;
+
+
+/*
+ *  A pattern matcher can have a non-terminal operand that satisfies a particular subgoal state.
+ */
+
+operand = NON_TERMINAL_PARAMETER( simple_identifier state, simple_identifier paramName ): 1
+{
+    JBurgPatternMatcher result = JBurgPatternMatcher.matchFiniteCost(state);
+    result.setParameterData(state, paramName);
+
+	//  This subgoal's cost will be added to the overall cost of the pattern match.
+	subgoals.add(0, result);
+
+    return result;
+}
+
+/*
+ *  **********************
+ *  **  N-ary Operands  **
+ *  **********************
+ */
+
+operand = OPERAND_AT_LEAST_ONE_ARITY( NON_TERMINAL_PARAMETER( simple_identifier state, simple_identifier paramName ) ): 1
+{
+	JBurgPatternMatcher result = JBurgPatternMatcher.matchOperandAtLeastNTimes(1);
+    result.setParameterData(state, paramName);
+    subgoals.add(0, result);
+
+    return result;
+}
+
+
+operand = OPERAND_ARBITRARY_ARITY( NON_TERMINAL_PARAMETER( simple_identifier state, simple_identifier paramName ) ): 1
+{
+	JBurgPatternMatcher result = JBurgPatternMatcher.matchOperandAtLeastNTimes(0);
+    result.setParameterData(state, paramName);
+    subgoals.add(0, result);
+
+    return result;
+}
+
+/*
+ *  Match an IDENTIFIER leaf.
+ */
+simple_identifier = IDENTIFIER(void): 1
+{
+    return #simple_identifier.getText();
+}

@@ -1,0 +1,114 @@
+<h3>JBurg Frequently Asked Questions</h3>
+
+<ul>
+<li><b>What is JBurg?</b>
+<p>JBurg is a <i>Bottom-Up Rewrite Machine Generator</i> for Java.
+
+<p>A bottom-up rewrite machine is a compiler construction tool that is
+often used in the compiler's back end to convert a tree-structured
+representation of a program into machine code -- or, in this case, bytecode.
+
+<p>A very simple compiler tool chain is:
+<dir><i>source code</i> -&gt; JavaCC -&gt; <i>syntax tree</i> -&gt; JBurg-generated BURM -&gt; BCEL -&gt; <i>Java class</i>.</dir>
+
+<p>This distribution includes a brief introduction to the <a href="theory.html">theory</a>.
+
+<p><li><b>Help!  My compiler fails with a &quot;Unable to find a rule to process x(22){-1}&quot; exception.</b>
+<p>
+Your BURM encountered a tree segment that didn't match any available pattern, or that could not satisfy a goal state
+required by a parent.
+
+See <a href="users-guide.html#unmatchedRule">the debugging guide</a>
+
+<p><li><b>What are JBurg's system requirements?</b>
+<ul>
+<li>JBurg is written in Java and generates Java code.
+JBurg itself, and the generated rewrite machine, both use inner classes.
+<li>JBurg uses the ANTLR parser generator to parse JBurg specifications.
+ANTLR is available from <a href="http://www.antlr.org">http://www.antlr.org</a>.
+<br>Note that the generated BURM does not depend on ANTLR in any way.
+</ul>
+
+<p><li><b>Is JBurg related to the other "jburg" projects out on the 'Net?</b>
+<p>No.  Unfortunately, "j" and "burg" have proven to be a very crowded namespace.
+<p>JBurg's pattern-matching code and some parts of its dynamic programming engine
+were based on Fraser, Hanson, and Proebsting's paper on <a href="references.html#iburg">iburg</a>,
+but aside from a close reading of the paper and its examples, all JBurg's code was
+developed independently.
+
+<p><li><b>Do I have to deploy any JBurg components with my compiler?</b>
+<p>No.  The bottom-up rewrite machine that JBurg generates is self-contained.
+
+<p><li><b>How well do JBurg-generated rewrite machines scale?</b>
+<br>
+We have studied JBurg computations using theoretical analysis, runtime analysis using performance tools 
+such as JProbe, and by measuring the elapsed time required to compile stress-test programs.
+JBurg generates a bottom-up rewrite machine that is <code>O(N)</code>.
+
+
+<p><li><b>Is JBurg like JJTree?  What makes bottom-up rewrite worth the trouble of learning a new language?</b>
+<br>
+It is difficult to compare the two techniques precisely, because their theory is different: 
+JJTree works from the top down, and it has hard-coded logic at choice points that guide it.  
+JBurg works from the bottom-up, and finds patterns in the tree that satisfy goals.  
+Goals can then be re-used as subgoals by a parent node, or they can be used at the 
+same level of the tree to help satisfy additional goals.
+
+For example, consider this pattern, which derives an integer constant:
+
+<p>
+<dir><code>
+    int_value = INTEGER(void) { ... }
+</code></dir>
+
+<p>
+This could be used as a subgoal by a parent PLUS:
+
+<dir><code><pre>
+int_value = PLUS(int_value a, int_value b)
+{
+    // implement PLUS
+}
+</pre></code></dir>
+
+It can also be used to transform INTEGER into an object:
+
+<dir><code><pre>
+object_value = int_value
+{
+    //  Create a new Integer
+}
+</pre></code></dir>
+
+So JBurg specifications look a little bit like the terminals and non-terminals of a JJTree grammar, 
+but the &quot;lines between the dots&quot; aren't drawn in; they're sort of sketched in, 
+and the dynamic programming engine finds an minimum-cost cover of the input tree.
+
+<p><li><b>What's a &quot;minimum-cost cover?&quot;</b>
+<p>
+<ul>
+	<li><i>Cover the tree</i> means that all the nodes in the tree will be matched to an appropriate goal state.
+	If any node does not match any appropriate goal state, then JBurg will throw an exception.
+	<li><i>minimum-cost cover</i> means that if there are multiple possible covers of the tree (which is usually
+	the case), then JBurg will select the cover with the least overall cost.
+</ul>
+
+<p><li><b>What's &quot;Dynamic Programming?&quot;</b>
+<p>The dynamic programming engine in a JBurg-generated rewrite machine works from the bottom of the
+tree upwards to find the minimum-cost cover.
+It is described in detail on the  <a href="theory.html">theory</a> page.
+
+
+<!-- Piwik -->
+<script type="text/javascript">
+var pkBaseURL = (("https:" == document.location.protocol) ? "https://sourceforge.net/apps/piwik/jburg/" : "http://sourceforge.net/apps/piwik/jburg/");
+document.write(unescape("%3Cscript src='" + pkBaseURL + "piwik.js' type='text/javascript'%3E%3C/script%3E"));
+</script><script type="text/javascript">
+try {
+var piwikTracker = Piwik.getTracker(pkBaseURL + "piwik.php", 1);
+piwikTracker.trackPageView();
+piwikTracker.enableLinkTracking();
+} catch( err ) {}
+</script><noscript><p><img src="http://sourceforge.net/apps/piwik/jburg/piwik.php?idsite=1" style="border:0" alt=""/></p></noscript>
+<!-- End Piwik Tag -->
+

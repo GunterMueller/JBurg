@@ -1,0 +1,21 @@
+@Implements burmTest.ArithmeticOpcodes;
+
+@INodeType burmTest.TestINode;
+@ReturnType Integer;
+@NonterminalType burmTest.NonterminalTypes;
+
+@Header
+{
+    import java.util.Vector;
+    @SuppressWarnings("unchecked")
+}
+
+expression=ADD(expression lhs, expression r): 1
+{
+    return lhs.intValue() + r.intValue();
+}
+
+expression = INT(void): 1
+{
+    return Integer.parseInt(#expression.getUserObject().toString());
+}

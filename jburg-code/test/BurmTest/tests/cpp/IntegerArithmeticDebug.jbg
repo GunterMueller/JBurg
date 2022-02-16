@@ -1,0 +1,28 @@
+@Language cpp;
+@Implements ArithmeticTokenHolder;
+
+@INodeType  TestINode*;
+@ReturnType long;
+
+@Header
+{
+    #include <iostream>
+}
+
+@ErrorHandler
+{
+    FILE* f = fopen("gensrc/cppDebug.xml", "w");
+    dump(p,f);
+    fflush(f);
+    fclose(f);
+}
+
+expression=ADD(expression d1, expression d2): 1
+{
+    throw std::logic_error("dummy rule called");
+}
+
+traalfaaz = INT(void): 1
+{
+    return NULL;
+}

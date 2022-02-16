@@ -1,0 +1,12 @@
+<BurmTest burm="JavascriptTestEmitter" expectedResult="3">
+
+    <grammar file="tests/javascript/IntegerArithmetic.jbg"/>
+    <language value="javascript"/>
+    <jssource path="tests/javascript/IntegerArithmeticMain.js"/>
+    
+    <Node opcode="ADD">
+        <Node opcode="INT" userObject="1"/>
+        <Node opcode="INT" userObject="2"/>
+    </Node>
+
+</BurmTest>

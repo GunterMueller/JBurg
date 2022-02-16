@@ -1,0 +1,21 @@
+@Language cpp;
+@Implements ArithmeticTokenHolder;
+
+@INodeType  TestINode*;
+@ReturnType long;
+@WildcardState anything;
+
+@GetAnnotation(p)
+{
+    return (JBurgAnnotation<TestINode*>*) p->getAnnotation();
+}
+
+@SetAnnotation(p,intptr_t anno)
+{
+    p->setAnnotation((intptr_t)anno);
+}
+
+expression=ADD(anything contents*): 1
+{
+    return (int)contents.size();
+}

@@ -1,0 +1,29 @@
+@Language cpp;
+@Implements ArithmeticTokenHolder;
+
+@INodeType  TestINode*;
+@ReturnType long;
+
+@Header
+{
+    #include <iostream>
+}
+
+expression=ADD(expression exprs+): 1
+{
+    long sum = 0;
+    for (size_t i = 0; i < exprs.size(); i++) {
+        sum += exprs.at(i);
+    }
+    return sum;
+}
+
+expression=ADD(expression exprs*): 2
+{
+    throw std::logic_error("wrong reduction");
+}
+
+expression = INT(void): 1
+{
+    return atoi(#expression->getText().c_str());
+}

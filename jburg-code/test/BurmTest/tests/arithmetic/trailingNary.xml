@@ -1,0 +1,13 @@
+<BurmTest burm="TrailingNary" expectedResult="12">
+
+    <Opcodes class="burmTest.ArithmeticOpcodes"/>
+    <grammar file="tests/arithmetic/trailingNary.jbg"/>
+
+    <Node opcode="ADD">
+        <Node opcode="INT" userObject="5"/>
+        <Node opcode="INT" userObject="10"/>
+        <Node opcode="INT" userObject="1"/>
+        <Node opcode="INT" userObject="2"/>
+    </Node>
+
+</BurmTest>

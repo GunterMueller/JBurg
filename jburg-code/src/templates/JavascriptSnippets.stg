@@ -1,0 +1,354 @@
+/*
+ * Javascript code fragments used by JBurg's Java emitter.
+ */
+group EmitJavascript;
+
+actionRoutineParameter(paramType, paramName, initialValue) ::= <<
+
+var <paramName> = <initialValue>;
+>>
+
+add(lhs, rhs) ::= <<
+(<lhs> + <rhs>)
+>>
+
+adHocDirectives(directives) ::= <<
+<directives; separator="\n">
+>>
+
+arrayLiteral(contents) ::= <<
+[
+    <contents; separator=",\n">
+]
+>>
+
+assign(lvar, rvalue) ::= <<
+<lvar> = <rvalue>;
+>>
+
+binop(lhs, op, rhs) ::= <<
+(<lhs> <op> <rhs>)
+>>
+
+beginEmitterBody(reducerStack) ::= <<
+{
+    var <reducerStack> = [];
+>>
+
+block(contents) ::= <<
+{
+    <contents; separator="\n">
+}
+>>
+
+BURMProperty(propertyType, propertyName, canonicalName) ::= <<
+    /* Property specified as <propertyName> */
+    var <propertyName>;
+    /** @return value of <propertyName> */
+    function get<canonicalName>()
+    {
+        return this.<propertyName>;
+    }
+
+    /** Set <propertyName>.
+     * @param value to assign to <propertyName>
+     */
+    function set<canonicalName>(<propertyName>)
+    {
+        this.<propertyName> = <propertyName>;
+    }
+>>
+
+callMethod(nameElements, params) ::= <<
+<nameElements; separator=".">(<params; separator=",">)
+>>
+
+callSuper(parameters) ::= <<
+//TODO: super(<parameters; separator=",">);
+>>
+
+cast(newClass, target) ::= <<
+<target>
+>>
+
+classDecl(className, baseClassName, interfaceNames) ::= <<
+
+function <className>() {}<if(baseClassName)>
+<className>.prototype = new <baseClassName>;<endif>
+>>
+
+classHeader(className, baseClassName, interfaceNames) ::= <<
+<classDecl(...)>
+>>
+
+comment(text) ::= <</* <text> */>>
+
+declareFormalParameter(elements) ::= <<
+<elements:declarationTypePart(),declarationNamePart()>
+>>
+
+declarationTypePart() ::= <<
+>>
+
+declarationNamePart(n) ::= <<
+<n>
+>>
+
+declareInstanceField(modifiers, name, type, initializer) ::= <<
+var <name> = <if(initializer)><initializer><else>undefined<endif>;
+>>
+
+declareLocalVariable(name, type, initializer) ::= <<
+var <name><if(initializer)> = <initializer><endif>;
+>>
+
+declareMethod(modifiers, name, parameters, returnType, exceptions) ::= <<
+<if(defaults.className)>
+<defaults.className>.prototype.<name> = function(<parameters; separator=",">)
+<else>
+function <name>(<parameters; separator=",">)
+<endif>
+>>
+
+declareContainer(contentsType) ::= <<
+>>
+
+endEmitterBody() ::= <<
+}
+>>
+
+endStatement() ::= <<;>>
+
+equals(lhs, rhs) ::= <<
+<binop(op="==", ...)>
+>>
+
+forLoop(controlVar, startValue, endValue, comparison) ::= <<
+for(<controlVar> = <startValue>; <controlVar> <comparison> <endValue>; <controlVar>++)
+>>
+
+goalStateEnumerated(className, nt) ::= <<
+<className>.<nt>
+>>
+
+goalStateInteger(nt) ::= <<
+<nt>
+>>
+
+goalStateUndecorated(nt) ::= <<
+__<nt>_NT
+>>
+
+greaterThan(lhs, rhs) ::= <<
+(<lhs> \> <rhs>)
+>>
+
+greaterThanOrEquals(lhs, rhs) ::= <<
+(<lhs> \>= <rhs>)
+>>
+
+if(condition) ::= <<
+if ( <condition> )
+>>
+
+ifElseArm(condition, contents, elseArm) ::= <<
+else <if(condition)>if ( <condition> )<endif> {
+    <contents; separator="\n">
+} <elseArm>
+>>
+
+ifThen(condition, contents, elseArm) ::= <<
+if (<condition>) {
+    <contents; separator="\n">
+} <elseArm>
+>>
+
+identifier(id) ::= <<
+<id>
+>>
+
+innerClass(className, baseClassName, interfaceNames, contents) ::= <<
+<classDecl(...)>
+<contents>
+
+>>
+
+isNull(expr) ::= <<
+<expr> == null
+>>
+
+logicalAnd(lhs, rhs) ::= <<
+<lhs> && <rhs>
+>>
+
+logicalOr(lhs, rhs) ::= <<
+<lhs> || <rhs>
+>>
+
+maxIntValue() ::= "MAX_COST_VALUE"
+
+memberAccess(stem, member) ::= <<
+<if(stem)><stem>.<endif><member>
+>>
+
+method(docComment, decl, contents) ::= <<
+
+<if(docComment)>
+/**
+ * <docComment>
+ */<endif>
+<decl> {
+    <contents; separator="\n">
+}
+>>
+
+minimumOf(e1,e2) ::= <<
+Math.min(<e1>,<e2>)
+>>
+
+narySubtreeGet(stem, index) ::= <<
+<stem>.get(<index>)
+>>
+
+narySubtreeSize(stem) ::= <<
+<stem>.size()
+>>
+newObject(type, parameters) ::= <<
+new <type>(<parameters; separator=",">)
+>>
+
+normalizedAdd(expr1, expr2) ::= <<
+normalizedAdd(<expr1>, <expr2>)
+>>
+
+not(operand) ::= <<
+!(operand)
+>>
+
+notEquals(lhs, rhs) ::= <<
+<binop(op="!=", ...)>
+>>
+
+ntIteratorEnumerated(ntType) ::= <<
+for( var i in <ntType> )
+>>
+
+ntIteratorInt() ::= <<
+for(var i = 0; i \<= nStates; i++)
+>>
+
+ntMissingEnumerated() ::= <<
+<nullPointer()>
+>>
+
+ntMissingInt() ::= <<0>>
+
+ntStateNameEnumerated() ::= <<i>>
+ntStateNameInt() ::= <<stateName[i]>>
+
+nullPointer() ::= <<null>>
+
+numericLiteral(literal) ::= <<
+<literal>
+>>
+
+packageHeader(packageName) ::= <<
+package <packageName>;
+>>
+
+popFromStack(valueType, stackName) ::= <<
+<stackName>.pop()
+>>
+
+procedureActualParameters(parameter) ::= <<
+(<parameter; separator=",">)
+>>
+
+procedureCall(procedureName, parameters) ::= <<
+<procedureName><parameters>
+>>
+
+pushToStack(stackName, value) ::= <<
+<stackName>.push(<value>)
+>>
+
+returnValue(value) ::= <<
+return (<value>)
+>>
+
+returnStmt(value) ::= <<
+return (<value>);
+>>
+
+statement(expr) ::= <<
+<expr>;
+>>
+
+subgoalAccessElement(accessElement) ::= <<
+<accessElement.index>
+>>
+
+subgoalDeclaration(subgoal, initialPosition, accessPath) ::= <<
+new JBurgSubgoal(<subgoal>,<initialPosition><if(accessPath)>,<endif><accessPath:subgoalAccessElement(); separator=",">)
+>>
+
+subgoalInitialNary(position) ::= <<
+true, <position>
+>>
+subgoalInitialFixed() ::= <<false, 0>>
+
+subgoalMissing() ::= <<
+<nullPointer()>
+>>
+
+subgoalTableHeader(subgoalArrayName, declContents) ::= <<
+var <subgoalArrayName> = 
+<declContents>;
+>>
+
+subtract(lhs, rhs) ::= <<
+<binop(op="-", ...)>
+>>
+
+switch(expr, contents) ::= <<
+switch(<expr>) {
+    <contents; separator="\n">
+}
+>>
+
+switchCase(label, contents) ::= <<
+case <label>: {
+    <contents; separator="\n">
+}
+break;
+>>
+
+switchDefault(contents) ::= <<
+default: {
+    <contents; separator="\n">
+}
+break;
+>>
+
+switchDefaultNoFallthrough(contents) ::= <<
+default: {
+    <contents; separator="\n">
+}
+>>
+
+throwDiagnostic(diagnostic) ::= <<
+throw new Error(<diagnostic>)
+>>
+
+throwsClause(exceptions) ::= <<
+>>
+
+whileHeader(test) ::= <<
+while(<test>)
+>>
+
+whileStatement(test, contents) ::= <<
+<whileHeader(test)> {
+    <contents; separator="\n">
+}
+>>
